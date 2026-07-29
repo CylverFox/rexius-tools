@@ -215,20 +215,20 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
 <div class="screen" id="screenPriorDefects">
   <div class="topbar">
     <button class="back-btn" onclick="showScreen('screenSetup')">← Back</button>
-    <div class="topbar-center">Previous Inspection Defects</div>
+    <div class="topbar-center" id="priorDefectsTopCenter">Previous Inspection Defects</div>
     <div></div>
   </div>
   <div class="content">
     <div class="card" style="margin-bottom:14px;padding:16px;border-left:4px solid var(--amber)">
       <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--amber);margin-bottom:6px">§396.11 — CDL Vehicle</div>
-      <div style="font-size:13px;color:var(--ink)">The previous inspection reported defects on this vehicle. Review the status below before proceeding.</div>
+      <div id="priorDefectsAlert" style="font-size:13px;color:var(--ink)">The previous inspection reported defects on this vehicle. Review the status below before proceeding.</div>
       <div style="font-size:11px;color:var(--gray);margin-top:4px" id="priorInspDate"></div>
     </div>
     <div id="priorDefectList" style="margin-bottom:14px"></div>
     <div class="card" style="padding:14px;margin-bottom:14px">
       <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
         <input type="checkbox" id="priorDefectsAck" style="margin-top:2px;width:18px;height:18px;flex-shrink:0">
-        <span style="font-size:13px;line-height:1.4">I have reviewed the prior defects. Any required repairs have been completed or the vehicle has been certified safe to operate.</span>
+        <span id="priorDefectsAckLabel" style="font-size:13px;line-height:1.4">I have reviewed the prior defects. Any required repairs have been completed or the vehicle has been certified safe to operate.</span>
       </label>
     </div>
     <button class="submit-btn" id="priorDefectsContinueBtn" disabled>Continue to Inspection</button>
@@ -344,6 +344,14 @@ const T = {
     yourPhoneSub: 'So the shop can reach you if they have questions about this defect.',
     confirmSubmit: 'Confirm & Submit',
     backBtn: '← Back',
+    priorDefectsTitle: 'Previous Inspection Defects',
+    priorDefectsAlert: 'The previous inspection reported defects on this vehicle. Review the status below before proceeding.',
+    priorDefectsAck: 'I have reviewed the prior defects. Any required repairs have been completed or the vehicle has been certified safe to operate.',
+    priorDefectsContinue: 'Continue to Inspection',
+    priorDefectsFrom: 'From inspection:',
+    pendingCert: 'Pending certification',
+    repaired: 'Repairs completed',
+    repairUnnecessary: 'No repair necessary',
   },
   es: {
     typeCardLabel: 'Tipo de Inspección', driverCardLabel: 'Conductor / Operador',
@@ -363,6 +371,14 @@ const T = {
     yourPhoneSub: 'Para que el taller pueda comunicarse si tiene preguntas sobre este defecto.',
     confirmSubmit: 'Confirmar y Enviar',
     backBtn: '← Atrás',
+    priorDefectsTitle: 'Defectos de Inspección Anterior',
+    priorDefectsAlert: 'La inspección anterior reportó defectos en este vehículo. Revise el estado a continuación antes de continuar.',
+    priorDefectsAck: 'He revisado los defectos anteriores. Las reparaciones necesarias se han completado o el vehículo ha sido certificado como seguro para operar.',
+    priorDefectsContinue: 'Continuar a la Inspección',
+    priorDefectsFrom: 'De la inspección:',
+    pendingCert: 'Certificación pendiente',
+    repaired: 'Reparaciones completadas',
+    repairUnnecessary: 'Sin reparación necesaria',
   }
 };
 const t = k => T[lang][k] || T.en[k] || k;
@@ -408,7 +424,7 @@ document.getElementById('differentVehicleBtn').addEventListener('click', () => {
 function handleSubmitClick() {
   const failures = formItems.filter(i => responses[i.id]?.value === 'fail');
   if (failures.length > 0) {
-    const safe = s => s == null ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const safe = s => s == null ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const listEl = document.getElementById('reviewDefectList');
     listEl.innerHTML = failures.map(item => {
       const resp = responses[item.id] || {};
@@ -416,9 +432,11 @@ function handleSubmitClick() {
       const note = resp.notes ? ': ' + resp.notes : '';
       const sevColor = sev === 'critical' ? 'var(--red)' : 'var(--amber)';
       const sevBg = sev === 'critical' ? '#fdf0f0' : '#fef8ec';
+      const itemTitle = (lang === 'es' && item.title_es) ? item.title_es : item.title;
+      const sevLabel = sev === 'critical' ? t('sev').critical : t('sev').minor;
       return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <span style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;color:${sevColor};padding:2px 7px;background:${sevBg};white-space:nowrap;margin-top:1px">${sev}</span>
-        <span style="font-size:13px;font-weight:500">${safe(item.title)}${safe(note)}</span>
+        <span style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;color:${sevColor};padding:2px 7px;background:${sevBg};white-space:nowrap;margin-top:1px">${sevLabel}</span>
+        <span style="font-size:13px;font-weight:500">${safe(itemTitle)}${safe(note)}</span>
       </div>`;
     }).join('');
     document.getElementById('contactPhone').value = '';
@@ -545,18 +563,29 @@ function setLang(l) {
 }
 
 function refreshLabels() {
-  ['typeCardLabel','driverCardLabel'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = t(id);
-  });
+  // Setup screen
+  const typeCardLabelEl = document.getElementById('typeCardLabel');
+  if (typeCardLabelEl) typeCardLabelEl.textContent = t('typeCardLabel');
+  const driverCardLabelEl = document.getElementById('driverCardLabel');
+  if (driverCardLabelEl) driverCardLabelEl.textContent = t('driverCardLabel');
   const di = document.getElementById('driverInput');
   if (di) di.placeholder = t('searchDriver');
   const sb = document.getElementById('startBtn');
   if (sb) sb.textContent = t('startBtn');
+
+  // Checklist screen
   const ct = document.getElementById('certText');
   if (ct) ct.textContent = t('cert')(selectedDriver?.name || '___');
   const sub = document.getElementById('submitBtn');
   if (sub) sub.textContent = t('submitBtn');
+  const sob = document.getElementById('startOverBtn');
+  if (sob) sob.textContent = t('startOver');
+  const dvb = document.getElementById('differentVehicleBtn');
+  if (dvb) dvb.textContent = t('differentVehicle');
+  const bb = document.getElementById('backBtn');
+  if (bb) bb.textContent = t('backBtn');
+
+  // Review screen
   const rsb = document.getElementById('reviewSubmitBtn');
   if (rsb) rsb.textContent = t('confirmSubmit');
   const rbb = document.getElementById('reviewBackBtn');
@@ -569,12 +598,25 @@ function refreshLabels() {
   if (ryp) ryp.textContent = t('yourPhone');
   const ryps = document.getElementById('reviewYourPhoneSub');
   if (ryps) ryps.textContent = t('yourPhoneSub');
-  const sob = document.getElementById('startOverBtn');
-  if (sob) sob.textContent = t('startOver');
-  const dvb = document.getElementById('differentVehicleBtn');
-  if (dvb) dvb.textContent = t('differentVehicle');
-  const bb = document.getElementById('backBtn');
-  if (bb) bb.textContent = t('backBtn');
+
+  // Success screen
+  const st = document.getElementById('successTitle');
+  if (st) st.textContent = t('successTitle');
+  const ss = document.getElementById('successSub');
+  if (ss) ss.textContent = t('successSub');
+  const ni = document.getElementById('newInspBtn');
+  if (ni) ni.textContent = t('newInsp');
+
+  // Prior defects screen (CDL)
+  const pdt = document.getElementById('priorDefectsTopCenter');
+  if (pdt) pdt.textContent = t('priorDefectsTitle');
+  const pda = document.getElementById('priorDefectsAlert');
+  if (pda) pda.textContent = t('priorDefectsAlert');
+  const pdack = document.getElementById('priorDefectsAckLabel');
+  if (pdack) pdack.textContent = t('priorDefectsAck');
+  const pdc = document.getElementById('priorDefectsContinueBtn');
+  if (pdc) pdc.textContent = t('priorDefectsContinue');
+
   renderTypeGrid();
   if (formItems.length) renderChecklist();
 }
@@ -871,20 +913,20 @@ function renderPriorDefects(data) {
   const dateEl = document.getElementById('priorInspDate');
   if (dateEl && data.inspection_date) {
     const d = new Date(data.inspection_date);
-    dateEl.textContent = `From inspection: ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
+    const dateStr = d.toLocaleDateString(lang === 'es' ? 'es-MX' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    dateEl.textContent = `${t('priorDefectsFrom')} ${dateStr}`;
   }
   const listEl = document.getElementById('priorDefectList');
   listEl.innerHTML = (data.defects || []).map(d => {
-    const cert = d.certified;
-    const certColor = cert ? 'var(--green)' : 'var(--red)';
-    const certLabel = cert
-      ? (d.certification === 'repaired' ? 'Repairs completed' : 'No repair necessary')
-      : 'Pending certification';
-    const certBy = cert && d.certified_by ? ` · by ${d.certified_by}` : '';
+    const certLabel = d.certified
+      ? (d.certification === 'repaired' ? t('repaired') : t('repairUnnecessary'))
+      : t('pendingCert');
+    const certColor = d.certified ? 'var(--green)' : 'var(--red)';
+    const certBy = d.certified && d.certified_by ? ` · ${d.certified_by}` : '';
     return `<div style="background:var(--paper);border:1px solid var(--border);border-left:3px solid ${certColor};padding:10px 14px;margin-bottom:6px">
       <div style="font-size:13px;font-weight:600">${d.description || '—'}</div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
-        <span style="font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;padding:1px 6px;background:${d.severity === 'critical' ? 'var(--red)' : 'var(--surface)'};color:${d.severity === 'critical' ? '#fff' : 'var(--gray)'}">${d.severity}</span>
+        <span style="font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;padding:1px 6px;background:${d.severity === 'critical' ? 'var(--red)' : 'var(--surface)'};color:${d.severity === 'critical' ? '#fff' : 'var(--gray)'}">${d.severity === 'critical' ? t('sev').critical : t('sev').minor}</span>
         ${d.wo_number ? `<span style="font-family:var(--mono);font-size:10px;color:var(--gray)">WO: ${d.wo_number}</span>` : ''}
         <span style="font-family:var(--mono);font-size:10px;color:${certColor};font-weight:600">${certLabel}${certBy}</span>
       </div>
@@ -892,6 +934,8 @@ function renderPriorDefects(data) {
   }).join('');
   document.getElementById('priorDefectsAck').checked = false;
   document.getElementById('priorDefectsContinueBtn').disabled = true;
+  // Apply translations to the static text on this screen
+  refreshLabels();
 }
 
 document.getElementById('priorDefectsAck').addEventListener('change', function() {
@@ -1140,9 +1184,12 @@ async function submitInspection() {
             const sev = resp?.severity || 'minor';
             const note = resp?.notes ? ': ' + resp.notes : '';
             const sevColor = sev === 'critical' ? 'var(--red)' : 'var(--amber)';
+            const itemTitle = (lang === 'es' && item.title_es) ? item.title_es : item.title;
+            const sevLabel = sev === 'critical' ? t('sev').critical : t('sev').minor;
+            const woLabel = lang === 'es' ? 'orden de trabajo abierta' : 'work order opened';
             return `<div style="background:#fff;border-left:3px solid ${sevColor};padding:8px 10px;margin-bottom:6px;font-size:13px">
-              <div style="font-weight:600;color:var(--ink)">${item.title}${note}</div>
-              <div style="font-family:var(--mono);font-size:10px;color:${sevColor};margin-top:2px;text-transform:uppercase">${sev} · work order opened</div>
+              <div style="font-weight:600;color:var(--ink)">${itemTitle}${note}</div>
+              <div style="font-family:var(--mono);font-size:10px;color:${sevColor};margin-top:2px;text-transform:uppercase">${sevLabel} · ${woLabel}</div>
             </div>`;
           }).join('')}
         </div>`;
@@ -1173,6 +1220,7 @@ function showError(id, msg) { const el = document.getElementById(id); if (el) { 
 function clearError(id) { const el = document.getElementById(id); if (el) { el.textContent = ''; el.classList.remove('show'); } }
 
 init();
+refreshLabels();
 </script>
 </body>
 </html>

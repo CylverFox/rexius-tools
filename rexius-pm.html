@@ -565,7 +565,7 @@ async function loadPmWorkOrders() {
   pmWorkOrders = {};
   if (Array.isArray(data)) {
     data.forEach(wo => {
-      if (wo.source_document_id) pmWorkOrders[wo.source_document_id] = wo;
+      if (wo.pm_schedule_id) pmWorkOrders[wo.pm_schedule_id] = wo;
     });
   }
 }

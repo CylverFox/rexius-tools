@@ -775,9 +775,10 @@ function woCard(w) {
     : `<span class="wo-tag tag-unassigned">Unassigned</span>`;
   const cost = w.total_parts_cost ? `<span class="wo-tag tag-cost">$${parseFloat(w.total_parts_cost).toLocaleString()}</span>` : '';
   const cdl = w.is_cdl ? `<span class="wo-tag" style="background:#1e3a5f;color:#fff;font-family:var(--mono);font-size:9px;font-weight:700">CDL</span>` : '';
+  const pm = w.source === 'scheduled_service' ? `<span class="wo-tag" style="background:var(--green-light);color:var(--green);font-family:var(--mono);font-size:9px;font-weight:700">PM</span>` : '';
   const woNum = w.work_order_number ? `<span style="font-family:var(--mono);font-size:9px;color:var(--gray)">${w.work_order_number}</span>` : '';
   return `<div class="wo-card ${pri}" data-wo-id="${w.id}">
-    <div class="wo-asset" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${w.asset_number || '—'} ${cdl} ${woNum}</div>
+    <div class="wo-asset" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${w.asset_number || '—'} ${cdl} ${pm} ${woNum}</div>
     <div class="wo-desc">${w.description || '—'}</div>
     <div class="wo-meta">
       <span class="wo-tag tag-team">${w.team || '—'}</span>
@@ -842,8 +843,9 @@ function openDetail(id) {
 
   document.getElementById('detailTitle').textContent = w.description || '—';
   const cdlBadge = w.is_cdl ? ' <span style="font-family:var(--mono);font-size:9px;font-weight:700;background:#1e3a5f;color:#fff;padding:1px 6px;vertical-align:middle">CDL</span>' : '';
+  const pmBadge = w.source === 'scheduled_service' ? ' <span style="font-family:var(--mono);font-size:9px;font-weight:700;background:var(--green-light);color:var(--green);padding:1px 6px;vertical-align:middle">PM — Scheduled Service</span>' : '';
   const woNumBadge = w.work_order_number ? ` <span style="font-family:var(--mono);font-size:10px;color:var(--gray)">${w.work_order_number}</span>` : '';
-  document.getElementById('detailAsset').innerHTML = [w.asset_number, w.year, w.make, w.model].filter(Boolean).join(' · ') + cdlBadge + woNumBadge;
+  document.getElementById('detailAsset').innerHTML = [w.asset_number, w.year, w.make, w.model].filter(Boolean).join(' · ') + cdlBadge + pmBadge + woNumBadge;
 
   const cost = w.total_parts_cost ? `$${parseFloat(w.total_parts_cost).toLocaleString()}` : '—';
 

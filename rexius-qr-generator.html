@@ -67,20 +67,19 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
   width: 220px;
 }
 .search-box:focus { outline: none; border-color: var(--green); }
-.filter-btn {
+.dept-select {
   font-family: var(--mono);
   font-size: 12px;
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid var(--border-light);
-  background: transparent;
-  color: var(--text-dim);
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
-  transition: all 0.12s;
-  white-space: nowrap;
+  outline: none;
+  min-width: 200px;
 }
-.filter-btn:hover { border-color: var(--green); color: var(--green); }
-.filter-btn.active { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+.dept-select:focus { border-color: var(--green); }
 .divider { width: 1px; height: 24px; background: var(--border); }
 .count-badge {
   font-family: var(--mono);
@@ -364,7 +363,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 <!-- URL CONFIG -->
 <div class="url-config">
   <span class="url-label">Base URL:</span>
-  <input class="url-input" id="baseUrl" value="https://cylverfox.github.io/rexius-tools/rexius-inspection.html?asset=" oninput="regenerateVisible()">
+  <input class="url-input" id="baseUrl" value="https://rexiusfleet.github.io/rexius-tools/rexius-inspection.html?asset=" oninput="regenerateVisible()">
   <span class="url-label" style="color:var(--text-muted);font-size:10px">QR encodes: {base_url}{asset_number}</span>
 </div>
 
@@ -372,14 +371,26 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 <div class="controls">
   <input class="search-box" id="searchBox" placeholder="Search asset..." oninput="filterAssets()">
   <div class="divider"></div>
-  <button class="filter-btn active" data-team="all" onclick="setTeamFilter('all')">All</button>
-  <button class="filter-btn" data-team="team_g" onclick="setTeamFilter('team_g')">G Group</button>
-  <button class="filter-btn" data-team="team_m" onclick="setTeamFilter('team_m')">M Group</button>
-  <button class="filter-btn" data-team="team_c" onclick="setTeamFilter('team_c')">C Group</button>
-  <button class="filter-btn" data-team="team_b" onclick="setTeamFilter('team_b')">B Group</button>
-  <button class="filter-btn" data-team="team_l" onclick="setTeamFilter('team_l')">L Group</button>
-  <button class="filter-btn" data-team="team_equipment" onclick="setTeamFilter('team_equipment')">Equipment</button>
-  <button class="filter-btn" data-team="team_rexius" onclick="setTeamFilter('team_rexius')">Rexius</button>
+  <select class="dept-select" id="deptSelect" onchange="setTeamFilter(this.value)">
+    <option value="all">All Departments</option>
+    <option value="dept_02">02 · Eugene Blower</option>
+    <option value="dept_03">03 · Yard 1</option>
+    <option value="dept_07">07 · Bag Plant</option>
+    <option value="dept_08">08 · Western Mobile Storage</option>
+    <option value="dept_09">09 · Shop & Service</option>
+    <option value="dept_10">10 · Admin & Office</option>
+    <option value="dept_12">12 · Flatbed</option>
+    <option value="dept_14">14 · Specialty Products</option>
+    <option value="dept_17">17 · CAS</option>
+    <option value="dept_18">18 · Portland Blower</option>
+    <option value="dept_26">26 · Bulk Delivery</option>
+    <option value="dept_31">31 · L Group</option>
+    <option value="dept_32">32 · G Group</option>
+    <option value="dept_34">34 · M Group</option>
+    <option value="dept_36">36 · B Group</option>
+    <option value="dept_37">37 · C Group</option>
+    <option value="team_equipment">Equipment</option>
+  </select>
   <span class="count-badge" id="countBadge">Loading...</span>
 </div>
 
@@ -445,7 +456,8 @@ function getFilteredAssets() {
 
 function setTeamFilter(team) {
   teamFilter = team;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.team === team));
+  const sel = document.getElementById('deptSelect');
+  if (sel && sel.value !== team) sel.value = team;
   renderAssetList();
 }
 

@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rexius Fleet — Preventive Maintenance</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@300;400;500;600&display=swap');
+
+:root {
+  --ink: #0d0d0d; --paper: #fafaf8; --surface: #f3f2ee; --border: #d8d6d0;
+  --green: #1a5c32; --green-mid: #2d7d4a; --green-light: #e8f5ee;
+  --red: #8b1a1a; --red-light: #fdf0f0;
+  --amber: #7a4a00; --amber-light: #fef8ec;
+  --blue: #1e3a5f; --blue-light: #e8f0fa;
+  --gray: #6b7280; --gray-light: #9ca3af;
+  --mono: 'IBM Plex Mono', monospace;
+  --display: 'Barlow Condensed', sans-serif;
+  --body: 'Barlow', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--body); background: var(--surface); color: var(--ink); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+
+/* ── Login ── */
+#loginScreen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--ink); }
+.login-box { background: var(--paper); width: 100%; max-width: 360px; padding: 32px; }
+.login-wordmark { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--green); margin-bottom: 4px; }
+.login-title { font-family: var(--display); font-size: 26px; font-weight: 800; margin-bottom: 20px; }
+.login-input { width: 100%; font-family: var(--body); font-size: 15px; padding: 10px 12px; border: 1px solid var(--border); background: var(--paper); outline: none; margin-bottom: 10px; }
+.login-input:focus { border-color: var(--green); }
+.login-btn { width: 100%; font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 11px; border: none; background: var(--ink); color: var(--paper); cursor: pointer; }
+.login-btn:hover { background: var(--green); }
+.login-err { color: var(--red); font-size: 12px; margin-top: 8px; display: none; }
+.login-err.show { display: block; }
+
+/* ── App shell ── */
+#appScreen { display: none; }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 13px 20px; background: var(--ink); color: var(--paper); position: sticky; top: 0; z-index: 100; }
+.topbar-brand { font-family: var(--display); font-size: 18px; font-weight: 700; letter-spacing: .04em; }
+.topbar-badge { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.4); margin-left: 10px; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.logout-btn { background: none; border: 1px solid rgba(255,255,255,.2); color: rgba(255,255,255,.6); font-family: var(--mono); font-size: 10px; padding: 4px 10px; cursor: pointer; text-transform: uppercase; letter-spacing: .05em; }
+.logout-btn:hover { color: #fff; border-color: rgba(255,255,255,.5); }
+
+/* ── Tabs ── */
+.tabs { display: flex; background: var(--paper); border-bottom: 2px solid var(--border); padding: 0 20px; overflow-x: auto; }
+.tab { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; padding: 13px 18px; border: none; background: none; cursor: pointer; color: var(--gray); border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+.tab.active { color: var(--green); border-bottom-color: var(--green); }
+.tab:hover:not(.active) { color: var(--ink); }
+
+/* ── Summary bar ── */
+.summary-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border); background: var(--paper); }
+.summary-stat { flex: 1; padding: 14px 20px; border-right: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+.summary-stat:last-child { border-right: none; }
+.summary-stat:hover { background: var(--surface); }
+.summary-stat.active-filter { background: var(--surface); box-shadow: inset 0 -2px 0 var(--green); }
+.stat-num { font-family: var(--display); font-size: 28px; font-weight: 800; line-height: 1; }
+.stat-label { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gray); margin-top: 3px; }
+.stat-num.red { color: var(--red); }
+.stat-num.amber { color: var(--amber); }
+.stat-num.green { color: var(--green); }
+.stat-num.gray { color: var(--gray); }
+
+/* ── Filters ── */
+.filter-row { display: flex; gap: 10px; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+.filter-input { font-family: var(--body); font-size: 13px; padding: 7px 11px; border: 1px solid var(--border); background: var(--paper); color: var(--ink); outline: none; min-width: 200px; flex: 1; }
+.filter-input:focus { border-color: var(--green); }
+.filter-select { font-family: var(--body); font-size: 13px; padding: 7px 11px; border: 1px solid var(--border); background: var(--paper); color: var(--ink); outline: none; cursor: pointer; }
+.filter-select:focus { border-color: var(--green); }
+.filter-count { font-family: var(--mono); font-size: 11px; color: var(--gray); margin-left: auto; white-space: nowrap; }
+
+/* ── Asset list ── */
+.asset-list { padding: 16px 20px; }
+.asset-card { background: var(--paper); border: 1px solid var(--border); margin-bottom: 8px; cursor: pointer; transition: border-color .1s; }
+.asset-card:hover { border-color: var(--green); }
+.asset-card.expanded { border-color: var(--green); }
+.asset-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; flex-wrap: wrap; }
+.asset-num { font-family: var(--mono); font-size: 15px; font-weight: 700; min-width: 80px; }
+.asset-desc { font-size: 13px; color: var(--gray); flex: 1; min-width: 120px; }
+.asset-team { font-family: var(--mono); font-size: 10px; color: var(--gray); background: var(--surface); padding: 2px 7px; white-space: nowrap; }
+.asset-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.urgency-pill { font-family: var(--mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 2px 8px; white-space: nowrap; }
+.pill-overdue { background: var(--red); color: #fff; }
+.pill-week { background: var(--amber); color: #fff; }
+.pill-month { background: #92600a; color: #fff; }
+.pill-ok { background: var(--green-light); color: var(--green); }
+.expand-icon { margin-left: auto; color: var(--gray); font-size: 14px; transition: transform .15s; }
+.asset-card.expanded .expand-icon { transform: rotate(180deg); }
+
+/* ── Service rows ── */
+.service-list { border-top: 1px solid var(--border); display: none; }
+.asset-card.expanded .service-list { display: block; }
+.service-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px 10px 32px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.service-row:last-child { border-bottom: none; }
+.svc-type { font-size: 13px; font-weight: 500; flex: 1; min-width: 160px; }
+.svc-due { font-family: var(--mono); font-size: 11px; min-width: 90px; }
+.svc-due.overdue { color: var(--red); font-weight: 600; }
+.svc-due.week { color: var(--amber); font-weight: 600; }
+.svc-due.month { color: #92600a; }
+.svc-due.ok { color: var(--green); }
+.svc-interval { font-family: var(--mono); font-size: 10px; color: var(--gray); }
+.svc-last { font-family: var(--mono); font-size: 10px; color: var(--gray-light); min-width: 90px; }
+.svc-actions { display: flex; gap: 6px; }
+.btn { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 5px 10px; border: 1px solid var(--border); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--green); color: var(--green); }
+.btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn-primary:hover { background: var(--green); border-color: var(--green); }
+.btn-sm { padding: 3px 8px; font-size: 10px; }
+
+/* ── Empty state ── */
+.empty { text-align: center; padding: 48px 20px; color: var(--gray); }
+.empty-title { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.spinner-wrap { text-align: center; padding: 48px; color: var(--gray); font-family: var(--mono); font-size: 12px; }
+
+/* ── Modals ── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--paper); border: 1px solid var(--border); width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.modal-title { font-family: var(--display); font-size: 20px; font-weight: 700; }
+.modal-sub { font-size: 12px; color: var(--gray); margin-top: 2px; }
+.modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--gray); }
+.modal-body { padding: 20px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); }
+.form-row { margin-bottom: 14px; }
+.form-label { display: block; font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #555; margin-bottom: 5px; }
+.form-input, .form-select { width: 100%; font-family: var(--body); font-size: 14px; padding: 9px 11px; border: 1px solid var(--border); background: var(--paper); color: var(--ink); outline: none; }
+.form-input:focus, .form-select:focus { border-color: var(--green); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-hint { font-size: 11px; color: var(--gray); margin-top: 4px; }
+
+/* ── Meters tab ── */
+.meters-wrap { max-width: 800px; margin: 0 auto; padding: 20px; }
+.section-title { font-family: var(--display); font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.section-sub { font-size: 13px; color: var(--gray); margin-bottom: 20px; }
+.meter-card { background: var(--paper); border: 1px solid var(--border); padding: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.meter-asset { font-family: var(--mono); font-size: 14px; font-weight: 700; min-width: 80px; }
+.meter-vals { flex: 1; display: flex; gap: 20px; flex-wrap: wrap; }
+.meter-val { font-size: 13px; color: var(--gray); }
+.meter-val strong { color: var(--ink); font-weight: 600; }
+
+/* ── Toast ── */
+#toast { position: fixed; bottom: 20px; right: 20px; background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: 12px; padding: 10px 16px; border-left: 3px solid var(--green); opacity: 0; transform: translateY(6px); transition: all .2s; z-index: 9999; pointer-events: none; }
+#toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-wordmark">Rexius Fleet</div>
+    <div class="login-title">Preventive Maintenance</div>
+    <input class="login-input" id="loginUser" type="text" placeholder="Your name" autocomplete="name">
+    <input class="login-input" id="loginPass" type="password" placeholder="Password">
+    <button class="login-btn" id="loginBtn">Sign In</button>
+    <div class="login-err" id="loginErr">Incorrect password or missing name.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+  <div class="topbar">
+    <div>
+      <span class="topbar-brand">Rexius Fleet</span>
+      <span class="topbar-badge">PM Schedule</span>
+    </div>
+    <div class="topbar-right">
+      <span id="topbarUser" style="font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.5)"></span>
+      <button class="logout-btn" id="logoutBtn">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="schedule">Service Schedule</button>
+    <button class="tab" data-tab="meters">Meter Readings</button>
+    <button class="tab" data-tab="history">Service History</button>
+  </div>
+
+  <!-- SCHEDULE TAB -->
+  <div id="tab-schedule">
+    <div class="summary-bar">
+      <div class="summary-stat" data-urgency="overdue" id="statOverdue">
+        <div class="stat-num red" id="numOverdue">—</div>
+        <div class="stat-label">Overdue</div>
+      </div>
+      <div class="summary-stat" data-urgency="week" id="statWeek">
+        <div class="stat-num amber" id="numWeek">—</div>
+        <div class="stat-label">Due This Week</div>
+      </div>
+      <div class="summary-stat" data-urgency="month" id="statMonth">
+        <div class="stat-num" style="color:#92600a" id="numMonth">—</div>
+        <div class="stat-label">Due This Month</div>
+      </div>
+      <div class="summary-stat" data-urgency="ok" id="statOk">
+        <div class="stat-num green" id="numOk">—</div>
+        <div class="stat-label">Up to Date</div>
+      </div>
+      <div class="summary-stat" data-urgency="all" id="statAll">
+        <div class="stat-num gray" id="numAll">—</div>
+        <div class="stat-label">Total Services</div>
+      </div>
+    </div>
+    <div class="filter-row">
+      <input class="filter-input" id="searchInput" placeholder="Search asset number, make, model, service type…" oninput="renderSchedule()">
+      <select class="filter-select" id="teamFilter" onchange="renderSchedule()">
+        <option value="">All teams</option>
+      </select>
+      <select class="filter-select" id="typeFilter" onchange="renderSchedule()">
+        <option value="">All service types</option>
+      </select>
+      <div class="filter-count" id="filterCount"></div>
+    </div>
+    <div class="asset-list" id="scheduleList"><div class="spinner-wrap">Loading…</div></div>
+  </div>
+
+  <!-- METERS TAB -->
+  <div id="tab-meters" style="display:none">
+    <div class="meters-wrap">
+      <div class="section-title">Meter Readings</div>
+      <div class="section-sub">Record current odometer and engine hours for any asset. These update PM due dates automatically.</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <input class="filter-input" id="meterSearch" placeholder="Search asset…" oninput="renderMeters()" style="flex:1">
+        <button class="btn btn-primary" onclick="openMeterModal()">+ Log Reading</button>
+      </div>
+      <div id="meterList"><div class="spinner-wrap">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="tab-history" style="display:none">
+    <div class="meters-wrap">
+      <div class="section-title">Service History</div>
+      <div class="section-sub">All completed service records from Eroads import and manually logged completions.</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <input class="filter-input" id="histSearch" placeholder="Search asset or service type…" oninput="renderHistory()" style="flex:1">
+        <select class="filter-select" id="histTypeFilter" onchange="renderHistory()">
+          <option value="">All types</option>
+        </select>
+      </div>
+      <div id="historyList"><div class="spinner-wrap">Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPLETE SERVICE MODAL -->
+<div class="modal-overlay" id="completeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Record Service Completion</div>
+        <div class="modal-sub" id="completeModalSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('completeModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="completeScheduleId">
+      <input type="hidden" id="completeAssetId">
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Date Completed</label>
+          <input class="form-input" id="completeDate" type="date">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Performed By</label>
+          <input class="form-input" id="completeBy" placeholder="Shop or mechanic">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Odometer at Service</label>
+          <input class="form-input" id="completeMiles" type="number" placeholder="miles">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Engine Hours at Service</label>
+          <input class="form-input" id="completeHours" type="number" placeholder="hours">
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Notes</label>
+        <input class="form-input" id="completeNotes" placeholder="Optional notes">
+      </div>
+      <div style="background:var(--green-light);border-left:3px solid var(--green);padding:10px 14px;font-size:12px;color:var(--green)">
+        Next due date will be automatically recalculated from the completion date using the service interval.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('completeModal')">Cancel</button>
+      <button class="btn btn-primary" id="completeSubmitBtn">Record Completion</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT SCHEDULE MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="editModalTitle">Edit Service Schedule</div>
+        <div class="modal-sub" id="editModalSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('editModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editScheduleId">
+      <div class="form-row">
+        <label class="form-label">Service Type</label>
+        <input class="form-input" id="editServiceType" placeholder="e.g. A Service">
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Interval — Months</label>
+          <input class="form-input" id="editMonths" type="number" placeholder="e.g. 6">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Interval — Miles</label>
+          <input class="form-input" id="editMiles" type="number" placeholder="e.g. 5000">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Interval — Hours</label>
+          <input class="form-input" id="editHours" type="number" placeholder="e.g. 250">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Notify Days Before</label>
+          <input class="form-input" id="editNotifyDays" type="number" placeholder="7">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Next Due Date</label>
+          <input class="form-input" id="editNextDate" type="date">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Next Due Miles</label>
+          <input class="form-input" id="editNextMiles" type="number" placeholder="optional">
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Supplier / Shop</label>
+        <input class="form-input" id="editSupplier" placeholder="e.g. Rexius Auto Shop">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Notes</label>
+        <input class="form-input" id="editNotes" placeholder="Optional notes">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="color:var(--red);border-color:var(--red)" id="editDeleteBtn">Remove Schedule</button>
+      <button class="btn" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn btn-primary" id="editSubmitBtn">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD SCHEDULE MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Add Service Schedule</div>
+        <div class="modal-sub" id="addModalSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('addModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="addAssetId">
+      <div class="form-row">
+        <label class="form-label">Service Type</label>
+        <input class="form-input" id="addServiceType" placeholder="e.g. A Service, DOT Annual Inspection">
+        <div class="form-hint">Common: A Service · DOT Annual Inspection · Trailer Inspection · Transmission Service · Differential Service</div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Interval — Months</label>
+          <input class="form-input" id="addMonths" type="number" placeholder="e.g. 6">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Interval — Miles</label>
+          <input class="form-input" id="addMiles" type="number" placeholder="e.g. 5000">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Interval — Hours</label>
+          <input class="form-input" id="addHours" type="number" placeholder="e.g. 250">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Next Due Date</label>
+          <input class="form-input" id="addNextDate" type="date">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Next Due Miles</label>
+          <input class="form-input" id="addNextMiles" type="number" placeholder="optional">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Supplier / Shop</label>
+          <input class="form-input" id="addSupplier" placeholder="optional">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('addModal')">Cancel</button>
+      <button class="btn btn-primary" id="addSubmitBtn">Add Schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- METER MODAL -->
+<div class="modal-overlay" id="meterModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Log Meter Reading</div>
+      <button class="modal-close" onclick="closeModal('meterModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label">Asset</label>
+        <input class="form-input" id="meterAssetSearch" placeholder="Type asset number…" oninput="searchMeterAsset()">
+        <div id="meterAssetResults" style="border:1px solid var(--border);display:none;max-height:160px;overflow-y:auto;background:var(--paper)"></div>
+        <input type="hidden" id="meterAssetId">
+        <div id="meterAssetSelected" style="font-family:var(--mono);font-size:11px;color:var(--green);margin-top:4px"></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Odometer (miles)</label>
+          <input class="form-input" id="meterOdometer" type="number" placeholder="current miles">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Engine Hours</label>
+          <input class="form-input" id="meterEngineHours" type="number" placeholder="current hours">
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Date Recorded</label>
+        <input class="form-input" id="meterDate" type="date">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('meterModal')">Cancel</button>
+      <button class="btn btn-primary" id="meterSubmitBtn">Save Reading</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SUPA = 'https://toduddkyttuablausist.supabase.co';
+const KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZHVkZGt5dHR1YWJsYXVzaXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NjY5MTEsImV4cCI6MjA5NjI0MjkxMX0.ZdtMIuc9kEo7-x0Lr-y2--F1aqkurbLJ0YxeQD2ggDQ';
+const H    = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
+const PASSWORDS = ['jordanStool24', 'rexiusPM2024'];
+const SESSION_KEY = 'rexius_pm_session';
+const TODAY = new Date().toISOString().slice(0,10);
+let currentUser = '';
+
+let allSchedules = [];  // joined with asset + team
+let allAssets = [];
+let allMeters = [];
+let allHistory = [];
+let allTeams = [];
+let activeUrgency = 'all';
+let expandedAssets = new Set();
+
+// ── Auth ──────────────────────────────────────────────────────────
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginUser').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPass').focus(); });
+document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('logoutBtn').addEventListener('click', logout);
+
+function doLogin() {
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  if (!user || !PASSWORDS.includes(pass)) {
+    document.getElementById('loginErr').classList.add('show');
+    return;
+  }
+  document.getElementById('loginErr').classList.remove('show');
+  currentUser = user;
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify({ user })); } catch(e) {}
+  enterApp();
+}
+function logout() {
+  try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
+  currentUser = '';
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginPass').value = '';
+}
+function enterApp() {
+  document.getElementById('topbarUser').textContent = currentUser;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  loadAll();
+}
+(function() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SESSION_KEY));
+    if (saved?.user) { currentUser = saved.user; enterApp(); }
+  } catch(e) {}
+})();
+
+// ── Tabs ──────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
+    document.getElementById('tab-' + tab.dataset.tab).style.display = '';
+  });
+});
+
+// ── Summary bar filter ────────────────────────────────────────────
+document.querySelectorAll('.summary-stat').forEach(stat => {
+  stat.addEventListener('click', () => {
+    activeUrgency = stat.dataset.urgency;
+    document.querySelectorAll('.summary-stat').forEach(s => s.classList.remove('active-filter'));
+    stat.classList.add('active-filter');
+    renderSchedule();
+  });
+});
+
+// ── API ───────────────────────────────────────────────────────────
+async function get(path) {
+  const r = await fetch(`${SUPA}/rest/v1/${path}`, { headers: H });
+  return r.json();
+}
+async function post(path, body) {
+  const r = await fetch(`${SUPA}/rest/v1/${path}`, {
+    method: 'POST', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify(body)
+  });
+  return r.json();
+}
+async function patch(path, body) {
+  const r = await fetch(`${SUPA}/rest/v1/${path}`, {
+    method: 'PATCH', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify(body)
+  });
+  return r.json();
+}
+async function del(path) {
+  await fetch(`${SUPA}/rest/v1/${path}`, { method: 'DELETE', headers: H });
+}
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ── Load ──────────────────────────────────────────────────────────
+async function loadAll() {
+  await Promise.all([loadSchedules(), loadAssets(), loadTeams(), loadMeters(), loadHistory()]);
+  buildFilters();
+  renderSchedule();
+  renderMeters();
+  renderHistory();
+}
+
+async function loadSchedules() {
+  const data = await get('asset_service_schedules?is_active=eq.true&order=next_due_date&select=*,assets(id,asset_number,make,model,year,team_id,teams(name))');
+  allSchedules = (data || []).filter(s => s.assets);
+}
+
+async function loadAssets() {
+  allAssets = await get('assets?deleted_at=is.null&order=asset_number&select=id,asset_number,make,model,year,team_id,teams(name)');
+}
+
+async function loadTeams() {
+  allTeams = await get('teams?order=name&select=id,name');
+}
+
+async function loadMeters() {
+  // Get latest meter per asset
+  allMeters = await get('asset_meters?order=asset_id,recorded_at.desc&select=*,assets(asset_number,make,model)');
+}
+
+async function loadHistory() {
+  allHistory = await get('service_records?order=completed_date.desc&limit=500&select=*,assets(asset_number,make,model,teams(name))');
+}
+
+// ── Build filter dropdowns ────────────────────────────────────────
+function buildFilters() {
+  const teamSel = document.getElementById('teamFilter');
+  teamSel.innerHTML = '<option value="">All teams</option>' +
+    allTeams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+
+  const types = [...new Set(allSchedules.map(s => s.service_type))].sort();
+  const typeSel = document.getElementById('typeFilter');
+  typeSel.innerHTML = '<option value="">All service types</option>' +
+    types.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+
+  const histTypes = [...new Set(allHistory.map(s => s.service_type))].sort();
+  const histTypeSel = document.getElementById('histTypeFilter');
+  histTypeSel.innerHTML = '<option value="">All types</option>' +
+    histTypes.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+}
+
+// ── Urgency helpers ───────────────────────────────────────────────
+function getUrgency(nextDue) {
+  if (!nextDue) return 'ok';
+  const diff = Math.floor((new Date(nextDue) - new Date(TODAY)) / 86400000);
+  if (diff < 0) return 'overdue';
+  if (diff <= 7) return 'week';
+  if (diff <= 30) return 'month';
+  return 'ok';
+}
+function urgencySort(u) {
+  return { overdue: 0, week: 1, month: 2, ok: 3 }[u] ?? 4;
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d + 'T12:00:00');
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function daysLabel(nextDue) {
+  if (!nextDue) return '';
+  const diff = Math.floor((new Date(nextDue) - new Date(TODAY)) / 86400000);
+  if (diff < 0) return `${Math.abs(diff)}d overdue`;
+  if (diff === 0) return 'Due today';
+  if (diff === 1) return 'Due tomorrow';
+  return `${diff}d`;
+}
+function intervalLabel(s) {
+  const parts = [];
+  if (s.interval_months) parts.push(`${s.interval_months}mo`);
+  if (s.interval_miles) parts.push(`${s.interval_miles.toLocaleString()}mi`);
+  if (s.interval_hours) parts.push(`${s.interval_hours}h`);
+  return parts.join(' / ') || '—';
+}
+
+// ── Schedule tab ──────────────────────────────────────────────────
+function renderSchedule() {
+  const q = (document.getElementById('searchInput').value || '').toLowerCase();
+  const teamId = document.getElementById('teamFilter').value;
+  const svcType = document.getElementById('typeFilter').value;
+
+  // Filter schedules
+  let filtered = allSchedules.filter(s => {
+    const a = s.assets;
+    if (!a) return false;
+    if (teamId && a.team_id !== teamId) return false;
+    if (svcType && s.service_type !== svcType) return false;
+    const urg = getUrgency(s.next_due_date);
+    if (activeUrgency !== 'all' && urg !== activeUrgency) return false;
+    if (q) {
+      const hay = [a.asset_number, a.make, a.model, s.service_type].filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Update summary counts (from all schedules, not filtered)
+  const counts = { overdue: 0, week: 0, month: 0, ok: 0 };
+  allSchedules.forEach(s => {
+    const u = getUrgency(s.next_due_date);
+    counts[u] = (counts[u] || 0) + 1;
+  });
+  document.getElementById('numOverdue').textContent = counts.overdue;
+  document.getElementById('numWeek').textContent = counts.week;
+  document.getElementById('numMonth').textContent = counts.month;
+  document.getElementById('numOk').textContent = counts.ok;
+  document.getElementById('numAll').textContent = allSchedules.length;
+
+  // Group by asset
+  const byAsset = {};
+  filtered.forEach(s => {
+    const id = s.asset_id;
+    if (!byAsset[id]) byAsset[id] = { asset: s.assets, schedules: [] };
+    byAsset[id].schedules.push(s);
+  });
+
+  // Sort assets by worst urgency
+  const assetGroups = Object.values(byAsset).sort((a, b) => {
+    const aWorst = Math.min(...a.schedules.map(s => urgencySort(getUrgency(s.next_due_date))));
+    const bWorst = Math.min(...b.schedules.map(s => urgencySort(getUrgency(s.next_due_date))));
+    if (aWorst !== bWorst) return aWorst - bWorst;
+    return (a.asset.asset_number || '').localeCompare(b.asset.asset_number || '');
+  });
+
+  document.getElementById('filterCount').textContent =
+    `${filtered.length} service${filtered.length !== 1 ? 's' : ''} · ${assetGroups.length} asset${assetGroups.length !== 1 ? 's' : ''}`;
+
+  const el = document.getElementById('scheduleList');
+  if (!assetGroups.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-title">No services match</div><p>Try adjusting the filters above.</p></div>';
+    return;
+  }
+
+  el.innerHTML = assetGroups.map(({ asset, schedules }) => {
+    const expanded = expandedAssets.has(asset.id);
+    const worstUrgency = schedules.reduce((w, s) => {
+      const u = getUrgency(s.next_due_date);
+      return urgencySort(u) < urgencySort(w) ? u : w;
+    }, 'ok');
+
+    const badges = [];
+    const urgCounts = schedules.reduce((acc, s) => { const u = getUrgency(s.next_due_date); acc[u] = (acc[u]||0)+1; return acc; }, {});
+    if (urgCounts.overdue) badges.push(`<span class="urgency-pill pill-overdue">${urgCounts.overdue} overdue</span>`);
+    if (urgCounts.week) badges.push(`<span class="urgency-pill pill-week">${urgCounts.week} this week</span>`);
+    if (urgCounts.month) badges.push(`<span class="urgency-pill pill-month">${urgCounts.month} this month</span>`);
+    if (!urgCounts.overdue && !urgCounts.week && !urgCounts.month) badges.push(`<span class="urgency-pill pill-ok">up to date</span>`);
+
+    const desc = [asset.year, asset.make, asset.model].filter(Boolean).join(' ');
+
+    const svcRows = schedules
+      .sort((a, b) => urgencySort(getUrgency(a.next_due_date)) - urgencySort(getUrgency(b.next_due_date)))
+      .map(s => {
+        const urg = getUrgency(s.next_due_date);
+        const urgClass = urg === 'overdue' ? 'overdue' : urg === 'week' ? 'week' : urg === 'month' ? 'month' : 'ok';
+        const lastSvc = s.last_service_date ? fmtDate(s.last_service_date) : (s.last_service_miles ? `${s.last_service_miles.toLocaleString()}mi` : 'No record');
+        return `<div class="service-row">
+          <div class="svc-type">${esc(s.service_type)}</div>
+          <div class="svc-due ${urgClass}">${fmtDate(s.next_due_date)} <span style="opacity:.7;font-size:9px">${daysLabel(s.next_due_date)}</span></div>
+          <div class="svc-interval">${intervalLabel(s)}</div>
+          <div class="svc-last">Last: ${esc(lastSvc)}</div>
+          <div class="svc-actions">
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openCompleteModal('${s.id}','${asset.id}','${esc(s.service_type)}','${esc(asset.asset_number)}')">Complete</button>
+            <button class="btn btn-sm" onclick="event.stopPropagation();openEditModal('${s.id}')">Edit</button>
+          </div>
+        </div>`;
+      }).join('');
+
+    return `<div class="asset-card${expanded ? ' expanded' : ''}" data-asset-id="${asset.id}" onclick="toggleAsset('${asset.id}')">
+      <div class="asset-head">
+        <div class="asset-num">${esc(asset.asset_number)}</div>
+        <div class="asset-desc">${esc(desc) || '—'}</div>
+        <div class="asset-team">${esc(asset.teams?.name || '—')}</div>
+        <div class="asset-badges">${badges.join('')}</div>
+        <button class="btn btn-sm" onclick="event.stopPropagation();openAddModal('${asset.id}','${esc(asset.asset_number)}')">+ Add</button>
+        <div class="expand-icon">▾</div>
+      </div>
+      <div class="service-list">${svcRows}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleAsset(id) {
+  if (expandedAssets.has(id)) expandedAssets.delete(id);
+  else expandedAssets.add(id);
+  renderSchedule();
+}
+
+// ── Complete service modal ────────────────────────────────────────
+function openCompleteModal(schedId, assetId, svcType, assetNum) {
+  document.getElementById('completeScheduleId').value = schedId;
+  document.getElementById('completeAssetId').value = assetId;
+  document.getElementById('completeModalSub').textContent = `${assetNum} — ${svcType}`;
+  document.getElementById('completeDate').value = TODAY;
+  document.getElementById('completeBy').value = '';
+  document.getElementById('completeMiles').value = '';
+  document.getElementById('completeHours').value = '';
+  document.getElementById('completeNotes').value = '';
+  openModal('completeModal');
+}
+
+document.getElementById('completeSubmitBtn').addEventListener('click', async () => {
+  const schedId = document.getElementById('completeScheduleId').value;
+  const assetId = document.getElementById('completeAssetId').value;
+  const date = document.getElementById('completeDate').value;
+  const by = document.getElementById('completeBy').value.trim();
+  const miles = parseInt(document.getElementById('completeMiles').value) || null;
+  const hours = parseInt(document.getElementById('completeHours').value) || null;
+  const notes = document.getElementById('completeNotes').value.trim() || null;
+
+  if (!date) { showToast('Date required'); return; }
+
+  const sched = allSchedules.find(s => s.id === schedId);
+  if (!sched) { showToast('Schedule not found'); return; }
+
+  // Calculate next due date from completion date + interval
+  let nextDueDate = null;
+  if (sched.interval_months) {
+    const d = new Date(date);
+    d.setMonth(d.getMonth() + sched.interval_months);
+    nextDueDate = d.toISOString().slice(0,10);
+  }
+  let nextDueMiles = null;
+  if (miles && sched.interval_miles) nextDueMiles = miles + sched.interval_miles;
+
+  // Update schedule
+  await patch(`asset_service_schedules?id=eq.${schedId}`, {
+    last_service_date: date,
+    last_service_miles: miles,
+    last_service_hours: hours,
+    next_due_date: nextDueDate,
+    next_due_miles: nextDueMiles,
+    updated_at: new Date().toISOString(),
+  });
+
+  // Log service record
+  await post('service_records', {
+    asset_id: assetId,
+    service_type: sched.service_type,
+    completed_date: date,
+    odometer: miles,
+    engine_hours: hours,
+    performed_by: by || null,
+    notes: notes ? `${notes} [logged by ${currentUser}]` : `Logged by ${currentUser}`,
+    source: 'manual',
+  });
+
+  // Log meter reading if provided
+  if (miles || hours) {
+    await post('asset_meters', {
+      asset_id: assetId,
+      odometer: miles,
+      engine_hours: hours,
+      recorded_at: new Date(date).toISOString(),
+      source: 'service_completion',
+    });
+  }
+
+  showToast('Service recorded — next due date updated');
+  closeModal('completeModal');
+  await Promise.all([loadSchedules(), loadHistory(), loadMeters()]);
+  renderSchedule();
+  renderHistory();
+  renderMeters();
+});
+
+// ── Edit schedule modal ───────────────────────────────────────────
+function openEditModal(schedId) {
+  const s = allSchedules.find(x => x.id === schedId);
+  if (!s) return;
+  document.getElementById('editScheduleId').value = schedId;
+  document.getElementById('editModalTitle').textContent = `Edit — ${s.service_type}`;
+  document.getElementById('editModalSub').textContent = s.assets?.asset_number || '';
+  document.getElementById('editServiceType').value = s.service_type || '';
+  document.getElementById('editMonths').value = s.interval_months || '';
+  document.getElementById('editMiles').value = s.interval_miles || '';
+  document.getElementById('editHours').value = s.interval_hours || '';
+  document.getElementById('editNotifyDays').value = s.notify_days_before || 7;
+  document.getElementById('editNextDate').value = s.next_due_date || '';
+  document.getElementById('editNextMiles').value = s.next_due_miles || '';
+  document.getElementById('editSupplier').value = s.supplier || '';
+  document.getElementById('editNotes').value = s.notes || '';
+  openModal('editModal');
+}
+
+document.getElementById('editSubmitBtn').addEventListener('click', async () => {
+  const id = document.getElementById('editScheduleId').value;
+  await patch(`asset_service_schedules?id=eq.${id}`, {
+    service_type: document.getElementById('editServiceType').value.trim(),
+    interval_months: parseInt(document.getElementById('editMonths').value) || null,
+    interval_miles: parseInt(document.getElementById('editMiles').value) || null,
+    interval_hours: parseInt(document.getElementById('editHours').value) || null,
+    notify_days_before: parseInt(document.getElementById('editNotifyDays').value) || 7,
+    next_due_date: document.getElementById('editNextDate').value || null,
+    next_due_miles: parseInt(document.getElementById('editNextMiles').value) || null,
+    supplier: document.getElementById('editSupplier').value.trim() || null,
+    notes: (document.getElementById('editNotes').value.trim() || '') + ` [edited by ${currentUser}]`,
+    updated_at: new Date().toISOString(),
+  });
+  showToast('Schedule updated');
+  closeModal('editModal');
+  await loadSchedules();
+  renderSchedule();
+});
+
+document.getElementById('editDeleteBtn').addEventListener('click', async () => {
+  if (!confirm('Remove this service schedule? This cannot be undone.')) return;
+  const id = document.getElementById('editScheduleId').value;
+  await patch(`asset_service_schedules?id=eq.${id}`, { is_active: false, updated_at: new Date().toISOString() });
+  showToast('Schedule removed');
+  closeModal('editModal');
+  await loadSchedules();
+  renderSchedule();
+});
+
+// ── Add schedule modal ────────────────────────────────────────────
+function openAddModal(assetId, assetNum) {
+  document.getElementById('addAssetId').value = assetId;
+  document.getElementById('addModalSub').textContent = assetNum;
+  document.getElementById('addServiceType').value = '';
+  document.getElementById('addMonths').value = '';
+  document.getElementById('addMiles').value = '';
+  document.getElementById('addHours').value = '';
+  document.getElementById('addNextDate').value = '';
+  document.getElementById('addNextMiles').value = '';
+  document.getElementById('addSupplier').value = '';
+  openModal('addModal');
+}
+
+document.getElementById('addSubmitBtn').addEventListener('click', async () => {
+  const assetId = document.getElementById('addAssetId').value;
+  const svcType = document.getElementById('addServiceType').value.trim();
+  if (!svcType) { showToast('Service type required'); return; }
+  await post('asset_service_schedules', {
+    asset_id: assetId,
+    service_type: svcType,
+    interval_months: parseInt(document.getElementById('addMonths').value) || null,
+    interval_miles: parseInt(document.getElementById('addMiles').value) || null,
+    interval_hours: parseInt(document.getElementById('addHours').value) || null,
+    next_due_date: document.getElementById('addNextDate').value || null,
+    next_due_miles: parseInt(document.getElementById('addNextMiles').value) || null,
+    supplier: document.getElementById('addSupplier').value.trim() || null,
+    notes: `Added by ${currentUser}`,
+    is_active: true,
+    source: 'manual',
+  });
+  showToast('Service schedule added');
+  closeModal('addModal');
+  await loadSchedules();
+  renderSchedule();
+});
+
+// ── Meters tab ────────────────────────────────────────────────────
+function renderMeters() {
+  const q = (document.getElementById('meterSearch').value || '').toLowerCase();
+  // Latest reading per asset
+  const latest = {};
+  allMeters.forEach(m => {
+    if (!latest[m.asset_id]) latest[m.asset_id] = m;
+  });
+  let entries = Object.values(latest).filter(m => {
+    if (!q) return true;
+    const hay = [m.assets?.asset_number, m.assets?.make, m.assets?.model].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  }).sort((a,b) => (a.assets?.asset_number||'').localeCompare(b.assets?.asset_number||''));
+
+  const el = document.getElementById('meterList');
+  if (!entries.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-title">No meter readings yet</div><p>Log a reading to start tracking odometer and hours against service intervals.</p></div>';
+    return;
+  }
+  el.innerHTML = entries.map(m => {
+    const a = m.assets;
+    const desc = [a?.make, a?.model].filter(Boolean).join(' ');
+    const dt = m.recorded_at ? new Date(m.recorded_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+    return `<div class="meter-card">
+      <div class="meter-asset">${esc(a?.asset_number||'—')}</div>
+      <div class="meter-vals">
+        <div class="meter-val"><strong>${esc(desc)||'—'}</strong></div>
+        ${m.odometer ? `<div class="meter-val">Odometer: <strong>${m.odometer.toLocaleString()} mi</strong></div>` : ''}
+        ${m.engine_hours ? `<div class="meter-val">Hours: <strong>${m.engine_hours.toLocaleString()}</strong></div>` : ''}
+        <div class="meter-val">Recorded: <strong>${dt}</strong></div>
+      </div>
+      <button class="btn btn-sm" onclick="openMeterModalForAsset('${m.asset_id}','${esc(a?.asset_number||'')}')">Update</button>
+    </div>`;
+  }).join('');
+}
+
+function openMeterModal() {
+  document.getElementById('meterAssetSearch').value = '';
+  document.getElementById('meterAssetId').value = '';
+  document.getElementById('meterAssetSelected').textContent = '';
+  document.getElementById('meterAssetResults').style.display = 'none';
+  document.getElementById('meterOdometer').value = '';
+  document.getElementById('meterEngineHours').value = '';
+  document.getElementById('meterDate').value = TODAY;
+  openModal('meterModal');
+}
+
+function openMeterModalForAsset(assetId, assetNum) {
+  openMeterModal();
+  document.getElementById('meterAssetId').value = assetId;
+  document.getElementById('meterAssetSearch').value = assetNum;
+  document.getElementById('meterAssetSelected').textContent = assetNum + ' selected';
+}
+
+function searchMeterAsset() {
+  const q = document.getElementById('meterAssetSearch').value.toLowerCase();
+  const results = document.getElementById('meterAssetResults');
+  if (!q) { results.style.display = 'none'; return; }
+  const matches = allAssets.filter(a => (a.asset_number||'').toLowerCase().includes(q) || (a.make||'').toLowerCase().includes(q)).slice(0,8);
+  if (!matches.length) { results.style.display = 'none'; return; }
+  results.style.display = 'block';
+  results.innerHTML = matches.map(a =>
+    `<div style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''" onclick="selectMeterAsset('${a.id}','${esc(a.asset_number)}','${esc([a.year,a.make,a.model].filter(Boolean).join(' '))}')">
+      <strong>${esc(a.asset_number)}</strong> ${esc([a.year,a.make,a.model].filter(Boolean).join(' '))}
+    </div>`
+  ).join('');
+}
+
+function selectMeterAsset(id, num, desc) {
+  document.getElementById('meterAssetId').value = id;
+  document.getElementById('meterAssetSearch').value = num;
+  document.getElementById('meterAssetSelected').textContent = `${num} — ${desc}`;
+  document.getElementById('meterAssetResults').style.display = 'none';
+}
+
+document.getElementById('meterSubmitBtn').addEventListener('click', async () => {
+  const assetId = document.getElementById('meterAssetId').value;
+  const odo = parseInt(document.getElementById('meterOdometer').value) || null;
+  const hrs = parseInt(document.getElementById('meterEngineHours').value) || null;
+  const date = document.getElementById('meterDate').value;
+  if (!assetId) { showToast('Select an asset'); return; }
+  if (!odo && !hrs) { showToast('Enter odometer or hours'); return; }
+  await post('asset_meters', {
+    asset_id: assetId,
+    odometer: odo,
+    engine_hours: hrs,
+    recorded_at: new Date(date || TODAY).toISOString(),
+    source: `manual:${currentUser}`,
+  });
+  showToast('Meter reading saved');
+  closeModal('meterModal');
+  await loadMeters();
+  renderMeters();
+});
+
+// ── History tab ───────────────────────────────────────────────────
+function renderHistory() {
+  const q = (document.getElementById('histSearch').value || '').toLowerCase();
+  const typeFilter = document.getElementById('histTypeFilter').value;
+  let filtered = allHistory.filter(r => {
+    const a = r.assets;
+    if (typeFilter && r.service_type !== typeFilter) return false;
+    if (q) {
+      const hay = [a?.asset_number, a?.make, a?.model, r.service_type].filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const el = document.getElementById('historyList');
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-title">No history found</div><p>Service completions will appear here.</p></div>';
+    return;
+  }
+
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;background:var(--paper)">
+    <thead><tr style="background:var(--surface);border-bottom:2px solid var(--border)">
+      <th style="padding:9px 12px;text-align:left;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray)">Asset</th>
+      <th style="padding:9px 12px;text-align:left;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray)">Service</th>
+      <th style="padding:9px 12px;text-align:left;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray)">Date</th>
+      <th style="padding:9px 12px;text-align:left;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray)">Odometer</th>
+      <th style="padding:9px 12px;text-align:left;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray)">By / Supplier</th>
+    </tr></thead>
+    <tbody>
+    ${filtered.map(r => {
+      const a = r.assets;
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 12px;font-family:var(--mono);font-weight:600">${esc(a?.asset_number||'—')}</td>
+        <td style="padding:8px 12px">${esc(r.service_type)}</td>
+        <td style="padding:8px 12px;font-family:var(--mono);font-size:11px">${fmtDate(r.completed_date)}</td>
+        <td style="padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--gray)">${r.odometer ? r.odometer.toLocaleString()+' mi' : r.engine_hours ? r.engine_hours+' hrs' : '—'}</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--gray)">${esc(r.performed_by||r.supplier||'—')}</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
+}
+
+// ── Modal helpers ─────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ── Toast ─────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>

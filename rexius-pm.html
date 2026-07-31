@@ -463,6 +463,7 @@ let allAssets = [];
 let allMeters = [];
 let allHistory = [];
 let allTeams = [];
+let pmWorkOrders = {};  // keyed by source_document_id (schedule id)
 let activeUrgency = 'all';
 let expandedAssets = new Set();
 
@@ -551,11 +552,22 @@ function esc(s) {
 
 // ── Load ──────────────────────────────────────────────────────────
 async function loadAll() {
-  await Promise.all([loadSchedules(), loadAssets(), loadTeams(), loadMeters(), loadHistory()]);
+  await Promise.all([loadSchedules(), loadAssets(), loadTeams(), loadMeters(), loadHistory(), loadPmWorkOrders()]);
   buildFilters();
   renderSchedule();
   renderMeters();
   renderHistory();
+}
+
+async function loadPmWorkOrders() {
+  const r = await fetch(`${SUPA}/rest/v1/rpc/get_pm_work_orders`, { method: 'POST', headers: H, body: '{}' });
+  const data = await r.json();
+  pmWorkOrders = {};
+  if (Array.isArray(data)) {
+    data.forEach(wo => {
+      if (wo.source_document_id) pmWorkOrders[wo.source_document_id] = wo;
+    });
+  }
 }
 
 async function loadSchedules() {
@@ -710,15 +722,39 @@ function renderSchedule() {
         const urg = getUrgency(s.next_due_date);
         const urgClass = urg === 'overdue' ? 'overdue' : urg === 'week' ? 'week' : urg === 'month' ? 'month' : 'ok';
         const lastSvc = s.last_service_date ? fmtDate(s.last_service_date) : (s.last_service_miles ? `${s.last_service_miles.toLocaleString()}mi` : 'No record');
+        const wo = pmWorkOrders[s.id];
+        const woStatusColor = wo ? (wo.status === 'completed' ? 'var(--green)' : wo.status === 'in_progress' ? 'var(--amber)' : 'var(--blue)') : '';
+        const woLabel = wo ? `WO ${wo.work_order_number} — ${wo.status.replace('_',' ')}${wo.mechanic ? ' · ' + wo.mechanic : ''}` : '';
+
+        // Action buttons depend on WO state
+        let actions = '';
+        if (!wo) {
+          // No WO — offer Create WO or Complete directly
+          actions = `
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();createPmWO('${s.id}','${asset.id}','${esc(s.service_type)}','${esc(asset.asset_number)}','${urg}')">Create WO</button>
+            <button class="btn btn-sm" onclick="event.stopPropagation();openCompleteModal('${s.id}','${asset.id}','${esc(s.service_type)}','${esc(asset.asset_number)}')">Complete</button>
+            <button class="btn btn-sm" onclick="event.stopPropagation();openEditModal('${s.id}')">Edit</button>`;
+        } else if (wo.status === 'completed') {
+          // WO completed — can still log directly or edit schedule
+          actions = `
+            <button class="btn btn-sm" onclick="event.stopPropagation();openCompleteModal('${s.id}','${asset.id}','${esc(s.service_type)}','${esc(asset.asset_number)}')">Log Service</button>
+            <button class="btn btn-sm" onclick="event.stopPropagation();openEditModal('${s.id}')">Edit</button>`;
+        } else {
+          // WO open or in_progress — don't create another, can still complete directly
+          actions = `
+            <button class="btn btn-sm" onclick="event.stopPropagation();openCompleteModal('${s.id}','${asset.id}','${esc(s.service_type)}','${esc(asset.asset_number)}')">Complete</button>
+            <button class="btn btn-sm" onclick="event.stopPropagation();openEditModal('${s.id}')">Edit</button>`;
+        }
+
         return `<div class="service-row">
           <div class="svc-type">${esc(s.service_type)}</div>
-          <div class="svc-due ${urgClass}">${fmtDate(s.next_due_date)} <span style="opacity:.7;font-size:9px">${daysLabel(s.next_due_date)}</span></div>
+          <div style="flex:1;min-width:120px">
+            <div class="svc-due ${urgClass}">${fmtDate(s.next_due_date)} <span style="opacity:.7;font-size:9px">${daysLabel(s.next_due_date)}</span></div>
+            ${wo ? `<div style="font-family:var(--mono);font-size:10px;color:${woStatusColor};margin-top:2px">${esc(woLabel)}</div>` : ''}
+          </div>
           <div class="svc-interval">${intervalLabel(s)}</div>
           <div class="svc-last">Last: ${esc(lastSvc)}</div>
-          <div class="svc-actions">
-            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openCompleteModal('${s.id}','${asset.id}','${esc(s.service_type)}','${esc(asset.asset_number)}')">Complete</button>
-            <button class="btn btn-sm" onclick="event.stopPropagation();openEditModal('${s.id}')">Edit</button>
-          </div>
+          <div class="svc-actions">${actions}</div>
         </div>`;
       }).join('');
 
@@ -740,6 +776,34 @@ function toggleAsset(id) {
   if (expandedAssets.has(id)) expandedAssets.delete(id);
   else expandedAssets.add(id);
   renderSchedule();
+}
+
+// ── Create PM Work Order ──────────────────────────────────────────
+async function createPmWO(schedId, assetId, svcType, assetNum, urgency) {
+  const priority = urgency === 'overdue' ? 'urgent' : urgency === 'week' ? 'high' : 'normal';
+  const r = await fetch(`${SUPA}/rest/v1/rpc/create_pm_work_order`, {
+    method: 'POST', headers: H,
+    body: JSON.stringify({
+      p_asset_id: assetId,
+      p_schedule_id: schedId,
+      p_service_type: svcType,
+      p_priority: priority,
+      p_created_by: currentUser,
+    })
+  });
+  const result = await r.json();
+  if (result?.success) {
+    if (result.existing) {
+      showToast(`WO ${result.work_order_number} already exists — shown on row`);
+    } else {
+      showToast(`WO ${result.work_order_number} created`);
+    }
+    await loadPmWorkOrders();
+    renderSchedule();
+  } else {
+    showToast('Failed to create work order');
+    console.error(result);
+  }
 }
 
 // ── Complete service modal ────────────────────────────────────────
@@ -814,7 +878,7 @@ document.getElementById('completeSubmitBtn').addEventListener('click', async () 
 
   showToast('Service recorded — next due date updated');
   closeModal('completeModal');
-  await Promise.all([loadSchedules(), loadHistory(), loadMeters()]);
+  await Promise.all([loadSchedules(), loadHistory(), loadMeters(), loadPmWorkOrders()]);
   renderSchedule();
   renderHistory();
   renderMeters();
@@ -855,7 +919,7 @@ document.getElementById('editSubmitBtn').addEventListener('click', async () => {
   });
   showToast('Schedule updated');
   closeModal('editModal');
-  await loadSchedules();
+  await Promise.all([loadSchedules(), loadPmWorkOrders()]);
   renderSchedule();
 });
 
@@ -865,7 +929,7 @@ document.getElementById('editDeleteBtn').addEventListener('click', async () => {
   await patch(`asset_service_schedules?id=eq.${id}`, { is_active: false, updated_at: new Date().toISOString() });
   showToast('Schedule removed');
   closeModal('editModal');
-  await loadSchedules();
+  await Promise.all([loadSchedules(), loadPmWorkOrders()]);
   renderSchedule();
 });
 

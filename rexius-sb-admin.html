@@ -539,13 +539,17 @@ async function post(path, body) {
   const r = await fetch(`${SUPA}/rest/v1/${path}`, {
     method: 'POST', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify(body)
   });
-  return r.json();
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || `POST ${path} failed (${r.status})`);
+  return j;
 }
 async function patch(path, body) {
   const r = await fetch(`${SUPA}/rest/v1/${path}`, {
     method: 'PATCH', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify(body)
   });
-  return r.json();
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || `PATCH ${path} failed (${r.status})`);
+  return j;
 }
 async function del(path) {
   await fetch(`${SUPA}/rest/v1/${path}`, { method: 'DELETE', headers: H });
@@ -932,7 +936,7 @@ async function loadAssets() {
   allAssets = await get('assets?deleted_at=is.null&order=asset_number&select=id,asset_number,make,model,year,team_id,teams(name)');
 }
 async function loadAssignments() {
-  allAssignments = await get('asset_inspection_forms?is_active=eq.true&select=id,asset_id,form_id,inspection_type,lang,inspection_forms(name)');
+  allAssignments = await get('asset_inspection_forms?select=id,asset_id,form_id,inspection_type,lang,is_active,inspection_forms(name)');
 }
 
 // ── FORMS TAB ─────────────────────────────────────────────────────
@@ -1070,7 +1074,7 @@ function renderAssignments() {
   if (!assets.length) { el.innerHTML = '<div class="empty">No assets match.</div>'; return; }
 
   el.innerHTML = assets.map(a => {
-    const overrides = allAssignments.filter(x => x.asset_id === a.id);
+    const overrides = allAssignments.filter(x => x.asset_id === a.id && x.is_active);
     const teamName = a.teams?.name || '—';
     const desc = [a.year, a.make, a.model].filter(Boolean).join(' ');
     const overrideHtml = overrides.length === 0
@@ -1104,21 +1108,50 @@ function openAssignModal(assetId, assetNum, desc) {
   // Populate form dropdown
   const sel = document.getElementById('assignFormId');
   sel.innerHTML = allForms.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
+
+  // Preselect this asset's existing override, if any
+  const typeSel = document.getElementById('assignInspType');
+  const mine = allAssignments.filter(x => x.asset_id === assetId && x.is_active);
+  const current = mine.find(x => x.inspection_type === typeSel.value) || mine[0];
+  if (current) {
+    typeSel.value = current.inspection_type;
+    sel.value = current.form_id;
+  } else {
+    typeSel.selectedIndex = 0;
+    sel.selectedIndex = 0;
+  }
+  syncAssignForm();
   openModal('assignModal');
 }
+
+// Keep the form dropdown in sync with the selected inspection type
+function syncAssignForm() {
+  const assetId = document.getElementById('assignAssetId').value;
+  const inspType = document.getElementById('assignInspType').value;
+  const sel = document.getElementById('assignFormId');
+  const hit = allAssignments.find(x => x.asset_id === assetId && x.inspection_type === inspType && x.lang === 'en' && x.is_active);
+  sel.value = hit ? hit.form_id : (allForms[0] ? allForms[0].id : '');
+}
+document.getElementById('assignInspType').addEventListener('change', syncAssignForm);
 
 document.getElementById('saveAssignBtn').addEventListener('click', async () => {
   const assetId = document.getElementById('assignAssetId').value;
   const formId = document.getElementById('assignFormId').value;
   const inspType = document.getElementById('assignInspType').value;
-  // Check for existing override on same asset+type+lang
+  // Check for existing override on same asset+type+lang (including soft-deleted rows,
+  // which still occupy the (asset_id, inspection_type, lang) unique index)
   const existing = allAssignments.find(a => a.asset_id === assetId && a.inspection_type === inspType && a.lang === 'en');
-  if (existing) {
-    await patch(`asset_inspection_forms?id=eq.${existing.id}`, { form_id: formId, is_active: true });
-    showToast('Assignment updated');
-  } else {
-    await post('asset_inspection_forms', { asset_id: assetId, form_id: formId, inspection_type: inspType, lang: 'en', is_active: true });
-    showToast('Form assigned');
+  try {
+    if (existing) {
+      await patch(`asset_inspection_forms?id=eq.${existing.id}`, { form_id: formId, is_active: true });
+      showToast('Assignment updated');
+    } else {
+      await post('asset_inspection_forms', { asset_id: assetId, form_id: formId, inspection_type: inspType, lang: 'en', is_active: true });
+      showToast('Form assigned');
+    }
+  } catch (e) {
+    showToast('Save failed: ' + e.message);
+    return;
   }
   closeModal('assignModal');
   await loadAssignments();
@@ -1135,3 +1168,4 @@ async function removeAssignment(id) {
 </script>
 </body>
 </html>
+

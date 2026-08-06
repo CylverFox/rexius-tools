@@ -554,6 +554,12 @@ async function patch(path, body) {
 async function del(path) {
   await fetch(`${SUPA}/rest/v1/${path}`, { method: 'DELETE', headers: H });
 }
+async function rpc(name, args) {
+  const r = await fetch(`${SUPA}/rest/v1/rpc/${name}`, { method: 'POST', headers: H, body: JSON.stringify(args) });
+  const j = await r.json().catch(() => null);
+  if (!r.ok || !j) throw new Error((j && (j.message || j.hint)) || `RPC ${name} failed (${r.status})`);
+  return j;
+}
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -891,22 +897,29 @@ document.getElementById('reportFrequency').addEventListener('change', function()
 document.getElementById('saveReportBtn').addEventListener('click', async () => {
   const id = document.getElementById('reportId').value;
   const freq = document.getElementById('reportFrequency').value;
-  const body = {
-    name: document.getElementById('reportName').value.trim(),
-    edge_function: document.getElementById('reportFunction').value.trim(),
-    team_id: document.getElementById('reportTeam').value || null,
-    frequency: freq,
-    send_time: document.getElementById('reportTime').value.trim(),
-    send_day: freq !== 'daily' ? document.getElementById('reportDay').value : null,
-    updated_at: new Date().toISOString(),
-  };
-  if (!body.name || !body.edge_function) { showToast('Name and function are required'); return; }
-  if (id) {
-    await patch(`report_schedules?id=eq.${id}`, body);
-    showToast('Schedule updated');
-  } else {
-    await post('report_schedules', { ...body, is_active: true });
-    showToast('Schedule added');
+  const name = document.getElementById('reportName').value.trim();
+  const edgeFunction = document.getElementById('reportFunction').value.trim();
+  const teamId = document.getElementById('reportTeam').value || null;
+  const sendTime = document.getElementById('reportTime').value.trim();
+  const sendDay = freq !== 'daily' ? document.getElementById('reportDay').value : null;
+
+  if (!name || !edgeFunction) { showToast('Name and function are required'); return; }
+
+  try {
+    const data = await rpc('upsert_report_schedule', {
+      p_id: id || null,
+      p_name: name,
+      p_team_id: teamId,
+      p_edge_function: edgeFunction,
+      p_frequency: freq,
+      p_send_time: sendTime,
+      p_send_day: sendDay,
+    });
+    if (!data.success) { showToast('Save error: ' + (data.error || 'unknown')); return; }
+    showToast(id ? 'Schedule updated' : 'Schedule added');
+  } catch (e) {
+    showToast('Save failed: ' + e.message);
+    return;
   }
   closeModal('reportModal');
   await loadReports();
@@ -914,8 +927,14 @@ document.getElementById('saveReportBtn').addEventListener('click', async () => {
 });
 
 async function toggleReport(id, isActive) {
-  await patch(`report_schedules?id=eq.${id}`, { is_active: !isActive, updated_at: new Date().toISOString() });
-  showToast(isActive ? 'Report paused' : 'Report resumed');
+  try {
+    const data = await rpc('set_report_schedule_active', { p_id: id, p_is_active: !isActive });
+    if (!data.success) { showToast('Error: ' + (data.error || 'unknown')); return; }
+    showToast(isActive ? 'Report paused' : 'Report resumed');
+  } catch (e) {
+    showToast('Error: ' + e.message);
+    return;
+  }
   await loadReports();
   renderReports();
 }
@@ -1142,13 +1161,11 @@ document.getElementById('saveAssignBtn').addEventListener('click', async () => {
   // which still occupy the (asset_id, inspection_type, lang) unique index)
   const existing = allAssignments.find(a => a.asset_id === assetId && a.inspection_type === inspType && a.lang === 'en');
   try {
-    if (existing) {
-      await patch(`asset_inspection_forms?id=eq.${existing.id}`, { form_id: formId, is_active: true });
-      showToast('Assignment updated');
-    } else {
-      await post('asset_inspection_forms', { asset_id: assetId, form_id: formId, inspection_type: inspType, lang: 'en', is_active: true });
-      showToast('Form assigned');
-    }
+    const data = existing
+      ? await rpc('upsert_asset_inspection_form', { p_id: existing.id, p_form_id: formId, p_is_active: true })
+      : await rpc('upsert_asset_inspection_form', { p_asset_id: assetId, p_form_id: formId, p_inspection_type: inspType, p_lang: 'en', p_is_active: true });
+    if (!data.success) { showToast('Save failed: ' + (data.error || 'unknown')); return; }
+    showToast(existing ? 'Assignment updated' : 'Form assigned');
   } catch (e) {
     showToast('Save failed: ' + e.message);
     return;
@@ -1160,12 +1177,17 @@ document.getElementById('saveAssignBtn').addEventListener('click', async () => {
 
 async function removeAssignment(id) {
   if (!confirm('Remove this form override? Asset will use team default.')) return;
-  await patch(`asset_inspection_forms?id=eq.${id}`, { is_active: false });
-  showToast('Assignment removed');
+  try {
+    const data = await rpc('upsert_asset_inspection_form', { p_id: id, p_is_active: false });
+    if (!data.success) { showToast('Error: ' + (data.error || 'unknown')); return; }
+    showToast('Assignment removed');
+  } catch (e) {
+    showToast('Error: ' + e.message);
+    return;
+  }
   await loadAssignments();
   renderAssignments();
 }
 </script>
 </body>
 </html>
-

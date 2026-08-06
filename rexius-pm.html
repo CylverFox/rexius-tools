@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rexius Fleet — Preventive Maintenance</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@300;400;500;600&display=swap');
 
@@ -152,10 +153,10 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
   <div class="login-box">
     <div class="login-wordmark">Rexius Fleet</div>
     <div class="login-title">Preventive Maintenance</div>
-    <input class="login-input" id="loginUser" type="text" placeholder="Your name" autocomplete="name">
-    <input class="login-input" id="loginPass" type="password" placeholder="Password">
+    <input class="login-input" id="loginEmail" type="email" placeholder="you@rexius.com" autocomplete="username">
+    <input class="login-input" id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
     <button class="login-btn" id="loginBtn">Sign In</button>
-    <div class="login-err" id="loginErr">Incorrect password or missing name.</div>
+    <div class="login-err" id="loginErr">Incorrect email or password.</div>
   </div>
 </div>
 
@@ -452,11 +453,20 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
 <script>
 const SUPA = 'https://toduddkyttuablausist.supabase.co';
 const KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZHVkZGt5dHR1YWJsYXVzaXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NjY5MTEsImV4cCI6MjA5NjI0MjkxMX0.ZdtMIuc9kEo7-x0Lr-y2--F1aqkurbLJ0YxeQD2ggDQ';
+// H.Authorization is updated to the logged-in user's token by setAuthToken(); every
+// fetch below reads this same object, so all calls go out as the authenticated user.
 const H    = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
-const PASSWORDS = ['jordanStool24', 'rexiusPM2024'];
-const SESSION_KEY = 'rexius_pm_session';
 const TODAY = new Date().toISOString().slice(0,10);
 let currentUser = '';
+
+// Real authentication (Supabase Auth). Session is shared across all Rexius tools.
+const sbAuth = supabase.createClient(SUPA, KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+});
+function setAuthToken(session) {
+  H.Authorization = `Bearer ${session ? session.access_token : KEY}`;
+}
+sbAuth.auth.onAuthStateChange((_event, session) => { if (session) setAuthToken(session); });
 
 let allSchedules = [];  // joined with asset + team
 let allAssets = [];
@@ -469,41 +479,54 @@ let expandedAssets = new Set();
 
 // ── Auth ──────────────────────────────────────────────────────────
 document.getElementById('loginBtn').addEventListener('click', doLogin);
-document.getElementById('loginUser').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPass').focus(); });
+document.getElementById('loginEmail').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPass').focus(); });
 document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 document.getElementById('logoutBtn').addEventListener('click', logout);
 
-function doLogin() {
-  const user = document.getElementById('loginUser').value.trim();
+// Resolve the signed-in user's real name (from their linked person record) for audit fields.
+async function resolveIdentity(session) {
+  try {
+    const r = await fetch(`${SUPA}/rest/v1/rpc/get_my_identity`, { method: 'POST', headers: H, body: '{}' });
+    const id = await r.json();
+    if (id && id.name) return id.name;
+  } catch(e) {}
+  return session?.user?.email || 'Staff';
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPass').value;
-  if (!user || !PASSWORDS.includes(pass)) {
-    document.getElementById('loginErr').classList.add('show');
-    return;
-  }
-  document.getElementById('loginErr').classList.remove('show');
-  currentUser = user;
-  try { localStorage.setItem(SESSION_KEY, JSON.stringify({ user })); } catch(e) {}
+  const err = document.getElementById('loginErr');
+  if (!email) { err.textContent = 'Enter your email.'; err.classList.add('show'); return; }
+  err.classList.remove('show');
+  const { data, error } = await sbAuth.auth.signInWithPassword({ email, password: pass });
+  if (error) { err.textContent = error.message || 'Incorrect email or password.'; err.classList.add('show'); return; }
+  setAuthToken(data.session);
+  currentUser = await resolveIdentity(data.session);
   enterApp();
 }
-function logout() {
-  try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
-  currentUser = '';
-  document.getElementById('appScreen').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('loginPass').value = '';
+
+async function logout() {
+  try { await sbAuth.auth.signOut(); } catch(e) {}
+  location.reload();
 }
+
 function enterApp() {
   document.getElementById('topbarUser').textContent = currentUser;
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   loadAll();
 }
-(function() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(SESSION_KEY));
-    if (saved?.user) { currentUser = saved.user; enterApp(); }
-  } catch(e) {}
-})();
+
+async function initAuth() {
+  const { data: { session } } = await sbAuth.auth.getSession();
+  if (session) {
+    setAuthToken(session);
+    currentUser = await resolveIdentity(session);
+    enterApp();
+  }
+}
+initAuth();
 
 // ── Tabs ──────────────────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(tab => {

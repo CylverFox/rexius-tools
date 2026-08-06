@@ -6,6 +6,7 @@
 <title>Rexius Fleet — QR Generator</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
@@ -345,6 +346,18 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 </head>
 <body>
 
+<!-- LOGIN (dark, matches this tool) -->
+<div id="loginScreen" style="position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:var(--bg)">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;width:100%;max-width:360px;padding:32px">
+    <div style="font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.2em;color:var(--green);margin-bottom:6px">REXIUS</div>
+    <div style="font-family:var(--sans);font-size:22px;font-weight:600;margin-bottom:20px;color:var(--text)">QR Generator</div>
+    <input id="loginEmail" type="email" placeholder="you@rexius.com" autocomplete="username" style="width:100%;font-family:var(--mono);font-size:14px;padding:10px 12px;border:1px solid var(--border-light);border-radius:6px;background:var(--bg);color:var(--text);margin-bottom:10px;outline:none">
+    <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;font-family:var(--mono);font-size:14px;padding:10px 12px;border:1px solid var(--border-light);border-radius:6px;background:var(--bg);color:var(--text);margin-bottom:12px;outline:none">
+    <button id="loginBtn" style="width:100%;font-family:var(--mono);font-size:13px;font-weight:600;padding:11px;border:none;border-radius:6px;background:var(--green);color:#000;cursor:pointer">Sign In</button>
+    <div id="loginErr" style="color:var(--red);font-size:12px;margin-top:10px;display:none">Incorrect email or password.</div>
+  </div>
+</div>
+
 <!-- HEADER -->
 <div class="header">
   <div class="header-left">
@@ -353,6 +366,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
     <div class="status-dot" id="statusDot" style="background:var(--amber)"></div>
   </div>
   <div class="header-right">
+    <button class="btn btn-outline" onclick="logout()">Sign out</button>
     <button class="btn btn-outline" onclick="selectAll()">Select All</button>
     <button class="btn btn-outline" onclick="clearSelection()">Clear</button>
     <button class="btn btn-amber" onclick="printSelected()" id="printBtn" disabled>Print Sheet</button>
@@ -419,7 +433,17 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 <script>
 const SUPA = 'https://toduddkyttuablausist.supabase.co';
 const KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZHVkZGt5dHR1YWJsYXVzaXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NjY5MTEsImV4cCI6MjA5NjI0MjkxMX0.ZdtMIuc9kEo7-x0Lr-y2--F1aqkurbLJ0YxeQD2ggDQ';
+// HDRS.Authorization is updated to the logged-in user's token by setAuthToken().
 const HDRS = { apikey: KEY, Authorization: `Bearer ${KEY}` };
+
+// Real authentication (Supabase Auth). Session is shared across all Rexius tools.
+const sbAuth = supabase.createClient(SUPA, KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+});
+function setAuthToken(session) {
+  HDRS.Authorization = `Bearer ${session ? session.access_token : KEY}`;
+}
+sbAuth.auth.onAuthStateChange((_event, session) => { if (session) setAuthToken(session); });
 
 let allAssets = [];
 let selected = new Set();
@@ -721,7 +745,34 @@ function toast(msg) {
   setTimeout(() => el.classList.remove('show'), 2500);
 }
 
-loadAssets();
-</script>
+// ── Auth ──────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr');
+  if (!email) { err.textContent = 'Enter your email.'; err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  const { data, error } = await sbAuth.auth.signInWithPassword({ email, password: pass });
+  if (error) { err.textContent = error.message || 'Incorrect email or password.'; err.style.display = 'block'; return; }
+  setAuthToken(data.session);
+  document.getElementById('loginScreen').style.display = 'none';
+  loadAssets();
+}
+async function logout() {
+  try { await sbAuth.auth.signOut(); } catch(e) {}
+  location.reload();
+}
+async function initAuth() {
+  const { data: { session } } = await sbAuth.auth.getSession();
+  if (session) {
+    setAuthToken(session);
+    document.getElementById('loginScreen').style.display = 'none';
+    loadAssets();
+  }
+}
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginEmail').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPass').focus(); });
+document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+initAuth();</script>
 </body>
 </html>

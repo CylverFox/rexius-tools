@@ -190,6 +190,7 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
   <div class="content">
     <div class="error-banner" id="setupError"></div>
     <div id="assetHero"></div>
+    <div id="vehicleStatus"></div>
     <div class="card" id="typeCard">
       <div class="card-header"><span class="card-label" id="typeCardLabel">Inspection Type</span></div>
       <div class="card-body"><div class="type-grid" id="typeGrid"></div></div>
@@ -352,6 +353,19 @@ const T = {
     pendingCert: 'Pending certification',
     repaired: 'Repairs completed',
     repairUnnecessary: 'No repair necessary',
+    vsOOSTitle: 'Out of Service',
+    vsOOSText: 'This vehicle is marked out of service. Contact your supervisor before operating it.',
+    vsNoticeTitle: 'Notice',
+    vsPriorTitle: 'Previous Defects',
+    vsFixed: 'Fixed',
+    vsPending: 'Awaiting repair',
+    vsSince: 'since',
+    vsServiceTitle: 'Service Due',
+    vsDue: 'due',
+    vsDueAt: 'due at',
+    vsOverdue: 'Overdue',
+    vsMi: 'mi',
+    vsHrs: 'hrs',
   },
   es: {
     typeCardLabel: 'Tipo de Inspección', driverCardLabel: 'Conductor / Operador',
@@ -379,9 +393,101 @@ const T = {
     pendingCert: 'Certificación pendiente',
     repaired: 'Reparaciones completadas',
     repairUnnecessary: 'Sin reparación necesaria',
+    vsOOSTitle: 'Fuera de Servicio',
+    vsOOSText: 'Este vehículo está marcado fuera de servicio. Contacte a su supervisor antes de operarlo.',
+    vsNoticeTitle: 'Aviso',
+    vsPriorTitle: 'Defectos Anteriores',
+    vsFixed: 'Reparado',
+    vsPending: 'Reparación pendiente',
+    vsSince: 'desde',
+    vsServiceTitle: 'Servicio Próximo',
+    vsDue: 'vence',
+    vsDueAt: 'vence a',
+    vsOverdue: 'Atrasado',
+    vsMi: 'mi',
+    vsHrs: 'hrs',
   }
 };
 const t = k => T[lang][k] || T.en[k] || k;
+const esc = s => s == null ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// ── Vehicle status / prior defect summary ──────────────────────────
+let _priorCache = {};
+async function fetchPriorData(assetId) {
+  if (_priorCache[assetId]) return _priorCache[assetId];
+  const r = await fetch(`${SUPA}/rest/v1/rpc/get_prior_trip_defects`, {
+    method: 'POST', headers: H,
+    body: JSON.stringify({ p_asset_id: assetId })
+  });
+  const data = await r.json();
+  _priorCache[assetId] = data;
+  return data;
+}
+
+function renderVehicleStatus(data) {
+  const el = document.getElementById('vehicleStatus');
+  if (!el) return;
+  if (!data) { el.innerHTML = ''; return; }
+  const v = data.vehicle || {};
+  let html = '';
+
+  // Out-of-service / supervisor notice banner
+  if (v.status === 'out_of_service') {
+    const since = v.out_of_service_since
+      ? ` · ${t('vsSince')} ${new Date(v.out_of_service_since + 'T00:00:00').toLocaleDateString(lang === 'es' ? 'es-MX' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+      : '';
+    html += `<div style="background:var(--red-light);border:1px solid var(--red);border-left:4px solid var(--red);padding:12px 14px;margin-bottom:10px">
+      <div style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:4px">⚠ ${t('vsOOSTitle')}${since}</div>
+      <div style="font-size:13px;line-height:1.4">${esc(v.driver_notice) || t('vsOOSText')}</div>
+    </div>`;
+  } else if (v.driver_notice) {
+    html += `<div style="background:var(--amber-light);border:1px solid var(--amber);border-left:4px solid var(--amber);padding:12px 14px;margin-bottom:10px">
+      <div style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:4px">${t('vsNoticeTitle')}</div>
+      <div style="font-size:13px;line-height:1.4">${esc(v.driver_notice)}</div>
+    </div>`;
+  }
+
+  // Fixed / pending summary from the last failed inspection
+  const pending = Array.isArray(data.defects) ? data.defects : [];
+  const fixed = Array.isArray(data.resolved_defects) ? data.resolved_defects : [];
+  if (pending.length || fixed.length) {
+    const row = (d, ok) => `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 14px;border-bottom:1px solid var(--surface)">
+      <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${ok ? 'var(--green)' : 'var(--red)'};flex-shrink:0;margin-top:1px">${ok ? '✓' : '●'}</span>
+      <span style="font-size:13px;flex:1;line-height:1.35">${esc(d.description || '—')}</span>
+      <span style="font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;color:${ok ? 'var(--green)' : 'var(--red)'};white-space:nowrap;margin-top:2px">${ok ? t('vsFixed') : t('vsPending')}${d.wo_number ? ` · ${esc(d.wo_number)}` : ''}</span>
+    </div>`;
+    html += `<div class="card">
+      <div class="card-header"><span class="card-label">${t('vsPriorTitle')}</span></div>
+      <div>${pending.map(d => row(d, false)).join('')}${fixed.map(d => row(d, true)).join('')}</div>
+    </div>`;
+  }
+
+  // Upcoming / overdue service
+  const svc = Array.isArray(data.upcoming_service) ? data.upcoming_service : [];
+  if (svc.length) {
+    const today = new Date().toISOString().slice(0, 10);
+    const dueStr = s => {
+      if (s.due_at_mileage != null) return `${t('vsDueAt')} ${Number(s.due_at_mileage).toLocaleString()} ${t('vsMi')}`;
+      if (s.due_at_engine_hours != null) return `${t('vsDueAt')} ${Number(s.due_at_engine_hours).toLocaleString()} ${t('vsHrs')}`;
+      if (s.due_at_date) return `${t('vsDue')} ${new Date(s.due_at_date + 'T00:00:00').toLocaleDateString(lang === 'es' ? 'es-MX' : 'en-US', { month: 'short', day: 'numeric' })}`;
+      return '';
+    };
+    html += `<div class="card">
+      <div class="card-header"><span class="card-label">${t('vsServiceTitle')}</span></div>
+      <div>${svc.map(s => {
+        const late = s.status === 'overdue' || (s.due_at_date && s.due_at_date < today);
+        const c = late ? 'var(--red)' : 'var(--amber)';
+        return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 14px;border-bottom:1px solid var(--surface)">
+          <span style="font-size:12px;flex-shrink:0;margin-top:1px">🔧</span>
+          <span style="font-size:13px;flex:1;line-height:1.35">${esc(s.title)}</span>
+          <span style="font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;color:${c};white-space:nowrap;margin-top:2px">${late ? t('vsOverdue') + ' · ' : ''}${dueStr(s)}</span>
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
 
 // ── Static event listeners (attached once on load) ─────────────────
 document.getElementById('langEn').addEventListener('click', e => { e.stopPropagation(); setLang('en'); });
@@ -410,6 +516,7 @@ document.getElementById('startOverBtn').addEventListener('click', () => {
 document.getElementById('differentVehicleBtn').addEventListener('click', () => {
   asset = null; inspType = null; selectedDriver = null;
   responses = {}; defectPhotos = {}; formItems = [];
+  _priorCache = {};
   document.getElementById('driverInput').value = '';
   document.getElementById('driverBadge').style.display = 'none';
   const ct = document.getElementById('certText');
@@ -618,6 +725,7 @@ function refreshLabels() {
   if (pdc) pdc.textContent = t('priorDefectsContinue');
 
   renderTypeGrid();
+  if (asset && _priorCache[asset.id]) renderVehicleStatus(_priorCache[asset.id]);
   if (formItems.length) renderChecklist();
 }
 
@@ -670,6 +778,8 @@ async function loadAsset(assetNum) {
 }
 
 function showAssetSearch() {
+  const vs = document.getElementById('vehicleStatus');
+  if (vs) vs.innerHTML = '';
   document.getElementById('assetHero').innerHTML = `
     <div class="card" style="margin-bottom:10px;position:relative;z-index:200">
       <div class="card-header"><span class="card-label">${t('assetLabel')}</span></div>
@@ -726,6 +836,10 @@ async function setAsset(a) {
       ${desc ? `<div class="asset-hero-desc">${desc}</div>` : ''}
       ${teamName ? `<div class="asset-hero-team">${teamName}</div>` : ''}
     </div>`;
+  renderVehicleStatus(null);
+  fetchPriorData(a.id)
+    .then(d => { if (asset && asset.id === a.id) renderVehicleStatus(d); })
+    .catch(() => {});
   await renderTypeGrid();
   checkCanStart();
 }
@@ -872,11 +986,7 @@ async function startInspection() {
   try {
     // CDL vehicles: check for prior defects before starting
     if (asset.is_cdl) {
-      const priorResp = await fetch(`${SUPA}/rest/v1/rpc/get_prior_trip_defects`, {
-        method: 'POST', headers: H,
-        body: JSON.stringify({ p_asset_id: asset.id })
-      });
-      const priorData = await priorResp.json();
+      const priorData = await fetchPriorData(asset.id);
       if (priorData?.has_prior_defects && Array.isArray(priorData.defects) && priorData.defects.length > 0) {
         showLoading(false);
         renderPriorDefects(priorData);
@@ -1203,6 +1313,7 @@ async function submitInspection() {
 function resetAll() {
   asset = null; teamRef = null; inspType = null; selectedDriver = null;
   formItems = []; responses = {}; defectPhotos = {};
+  _priorCache = {};
   document.getElementById('driverInput').value = '';
   document.getElementById('driverBadge').style.display = 'none';
   document.getElementById('certCheck').checked = false;

@@ -562,6 +562,12 @@ driverInput.addEventListener('focus', () => onDriverSearch(driverInput.value));
 
 // ── Event delegation for dynamically generated content ─────────────
 document.addEventListener('click', e => {
+  // Change vehicle (✕ on asset hero)
+  if (e.target.closest('#changeAssetBtn')) {
+    changeAsset();
+    return;
+  }
+
   // Type grid buttons
   const typeBtn = e.target.closest('.type-btn');
   if (typeBtn && typeBtn.dataset.type) {
@@ -689,6 +695,8 @@ function refreshLabels() {
   if (sob) sob.textContent = t('startOver');
   const dvb = document.getElementById('differentVehicleBtn');
   if (dvb) dvb.textContent = t('differentVehicle');
+  const cab = document.getElementById('changeAssetBtn');
+  if (cab) cab.textContent = t('startOver');
   const bb = document.getElementById('backBtn');
   if (bb) bb.textContent = t('backBtn');
 
@@ -825,16 +833,32 @@ function pickAsset(idx) {
   setAsset(a);
 }
 
+function changeAsset() {
+  asset = null; teamRef = null; inspType = null; selectedDriver = null;
+  document.getElementById('driverInput').value = '';
+  document.getElementById('driverBadge').style.display = 'none';
+  const ct = document.getElementById('certText');
+  if (ct) ct.textContent = t('cert')('___');
+  history.replaceState({}, '', location.pathname);
+  showAssetSearch();
+  const grid = document.getElementById('typeGrid');
+  if (grid) grid.innerHTML = '';
+  checkCanStart();
+}
+
 async function setAsset(a) {
   asset = a;
   teamRef = a.teams?.import_ref || null;
   const desc = [a.year,a.make,a.model].filter(Boolean).join(' ');
   const teamName = a.teams?.name || '';
   document.getElementById('assetHero').innerHTML = `
-    <div class="asset-hero">
-      <div class="asset-hero-num">${a.asset_number}</div>
-      ${desc ? `<div class="asset-hero-desc">${desc}</div>` : ''}
-      ${teamName ? `<div class="asset-hero-team">${teamName}</div>` : ''}
+    <div class="asset-hero" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div>
+        <div class="asset-hero-num">${a.asset_number}</div>
+        ${desc ? `<div class="asset-hero-desc">${desc}</div>` : ''}
+        ${teamName ? `<div class="asset-hero-team">${teamName}</div>` : ''}
+      </div>
+      <button id="changeAssetBtn" style="font-family:var(--mono);font-size:11px;padding:5px 12px;background:none;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.8);cursor:pointer;letter-spacing:.04em;flex-shrink:0">${t('startOver')}</button>
     </div>`;
   renderVehicleStatus(null);
   fetchPriorData(a.id)
@@ -948,6 +972,7 @@ function checkCanStart() {
   btn.disabled = !ok;
   if (!ok) {
     const missing = [];
+    if (!asset) missing.push(lang === 'es' ? 'vehículo' : 'vehicle');
     if (!inspType) missing.push(lang === 'es' ? 'tipo' : 'type');
     if (!selectedDriver) missing.push(lang === 'es' ? 'conductor' : 'driver');
     btn.textContent = missing.length ? (lang === 'es' ? 'Seleccione: ' : 'Select: ') + missing.join(' & ') : t('startBtn');

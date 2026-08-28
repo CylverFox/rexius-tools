@@ -227,9 +227,18 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
     </div>
     <div id="priorDefectList" style="margin-bottom:14px"></div>
     <div class="card" style="padding:14px;margin-bottom:14px">
-      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
-        <input type="checkbox" id="priorDefectsAck" style="margin-top:2px;width:18px;height:18px;flex-shrink:0">
-        <span id="priorDefectsAckLabel" style="font-size:13px;line-height:1.4">I have reviewed the prior defects. Any required repairs have been completed or the vehicle has been certified safe to operate.</span>
+      <div id="priorAckPrompt" style="font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);margin-bottom:8px">Acknowledgment</div>
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:6px 0">
+        <input type="radio" name="priorAckChoice" value="repaired" style="margin-top:2px;width:18px;height:18px;flex-shrink:0;accent-color:var(--green)">
+        <span id="priorAckRepairedLabel" style="font-size:13px;line-height:1.4">Repairs have been completed, or the vehicle has been certified safe to operate.</span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:6px 0">
+        <input type="radio" name="priorAckChoice" value="no_repair" style="margin-top:2px;width:18px;height:18px;flex-shrink:0;accent-color:var(--green)">
+        <span id="priorAckNoRepairLabel" style="font-size:13px;line-height:1.4">The mechanic determined no repair was necessary — I have received this message.</span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:6px 0">
+        <input type="radio" name="priorAckChoice" value="pending" style="margin-top:2px;width:18px;height:18px;flex-shrink:0;accent-color:var(--green)">
+        <span id="priorAckPendingLabel" style="font-size:13px;line-height:1.4">Repairs are still pending — I am proceeding and will report the vehicle's current condition in this inspection.</span>
       </label>
     </div>
     <button class="submit-btn" id="priorDefectsContinueBtn" disabled>Continue to Inspection</button>
@@ -347,7 +356,10 @@ const T = {
     backBtn: '← Back',
     priorDefectsTitle: 'Previous Inspection Defects',
     priorDefectsAlert: 'The previous inspection reported defects on this vehicle. Review the status below before proceeding.',
-    priorDefectsAck: 'I have reviewed the prior defects. Any required repairs have been completed or the vehicle has been certified safe to operate.',
+    priorAckPrompt: 'Acknowledgment',
+    priorAckRepaired: 'Repairs have been completed, or the vehicle has been certified safe to operate.',
+    priorAckNoRepair: 'The mechanic determined no repair was necessary — I have received this message.',
+    priorAckPending: "Repairs are still pending — I am proceeding and will report the vehicle's current condition in this inspection.",
     priorDefectsContinue: 'Continue to Inspection',
     priorDefectsFrom: 'From inspection:',
     pendingCert: 'Pending certification',
@@ -387,7 +399,10 @@ const T = {
     backBtn: '← Atrás',
     priorDefectsTitle: 'Defectos de Inspección Anterior',
     priorDefectsAlert: 'La inspección anterior reportó defectos en este vehículo. Revise el estado a continuación antes de continuar.',
-    priorDefectsAck: 'He revisado los defectos anteriores. Las reparaciones necesarias se han completado o el vehículo ha sido certificado como seguro para operar.',
+    priorAckPrompt: 'Reconocimiento',
+    priorAckRepaired: 'Las reparaciones se han completado, o el vehículo ha sido certificado como seguro para operar.',
+    priorAckNoRepair: 'El mecánico determinó que no era necesaria ninguna reparación — he recibido este mensaje.',
+    priorAckPending: 'Las reparaciones siguen pendientes — continúo y reportaré la condición actual del vehículo en esta inspección.',
     priorDefectsContinue: 'Continuar a la Inspección',
     priorDefectsFrom: 'De la inspección:',
     pendingCert: 'Certificación pendiente',
@@ -727,8 +742,14 @@ function refreshLabels() {
   if (pdt) pdt.textContent = t('priorDefectsTitle');
   const pda = document.getElementById('priorDefectsAlert');
   if (pda) pda.textContent = t('priorDefectsAlert');
-  const pdack = document.getElementById('priorDefectsAckLabel');
-  if (pdack) pdack.textContent = t('priorDefectsAck');
+  const pap = document.getElementById('priorAckPrompt');
+  if (pap) pap.textContent = t('priorAckPrompt');
+  const par = document.getElementById('priorAckRepairedLabel');
+  if (par) par.textContent = t('priorAckRepaired');
+  const pan = document.getElementById('priorAckNoRepairLabel');
+  if (pan) pan.textContent = t('priorAckNoRepair');
+  const pape = document.getElementById('priorAckPendingLabel');
+  if (pape) pape.textContent = t('priorAckPending');
   const pdc = document.getElementById('priorDefectsContinueBtn');
   if (pdc) pdc.textContent = t('priorDefectsContinue');
 
@@ -1067,14 +1088,16 @@ function renderPriorDefects(data) {
       </div>
     </div>`;
   }).join('');
-  document.getElementById('priorDefectsAck').checked = false;
+  document.querySelectorAll('input[name="priorAckChoice"]').forEach(r => { r.checked = false; });
   document.getElementById('priorDefectsContinueBtn').disabled = true;
   // Apply translations to the static text on this screen
   refreshLabels();
 }
 
-document.getElementById('priorDefectsAck').addEventListener('change', function() {
-  document.getElementById('priorDefectsContinueBtn').disabled = !this.checked;
+document.querySelectorAll('input[name="priorAckChoice"]').forEach(r => {
+  r.addEventListener('change', () => {
+    document.getElementById('priorDefectsContinueBtn').disabled = !document.querySelector('input[name="priorAckChoice"]:checked');
+  });
 });
 
 document.getElementById('priorDefectsContinueBtn').addEventListener('click', () => {

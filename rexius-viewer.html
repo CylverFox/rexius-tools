@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.supabase.co; connect-src https://toduddkyttuablausist.supabase.co https://*.supabase.co; img-src 'self' blob: data: https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'">
 <title>Rexius Fleet — Viewer</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -661,13 +662,13 @@ function renderRow(r) {
       <div style="font-family:var(--mono);font-size:10px;color:var(--gray)">${timeStr}</div>
     </td>
     <td>
-      <div class="asset-num">${r.asset_number}</div>
-      <div class="vehicle-desc">${vehicle}</div>
+      <div class="asset-num">${escHtml(r.asset_number)}</div>
+      <div class="vehicle-desc">${escHtml(vehicle)}</div>
     </td>
-    <td>${r.asset_group ? `<span class="mono-tag tag-group">${r.asset_group}</span>` : '<span style="color:var(--gray);font-family:var(--mono);font-size:11px">—</span>'}</td>
-    <td class="inspector-name">${r.inspector_name}</td>
-    <td><span class="mono-tag tag-form">${shortFormName(r.form_name)}</span></td>
-    <td><span class="mono-tag tag-${r.status}">${r.status.replace('_',' ')}</span></td>
+    <td>${r.asset_group ? `<span class="mono-tag tag-group">${escHtml(r.asset_group)}</span>` : '<span style="color:var(--gray);font-family:var(--mono);font-size:11px">—</span>'}</td>
+    <td class="inspector-name">${escHtml(r.inspector_name)}</td>
+    <td><span class="mono-tag tag-form">${escHtml(shortFormName(r.form_name))}</span></td>
+    <td><span class="mono-tag tag-${r.status}">${escHtml(r.status.replace('_',' '))}</span></td>
     <td style="text-align:right">${r.fail_count > 0 ? `<span class="fail-dot">✕ ${r.fail_count}</span>` : '<span style="color:var(--gray);font-family:var(--mono);font-size:11px">—</span>'}</td>
     <td style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--gray)">${dur}</td>
   </tr>`;
@@ -754,9 +755,9 @@ function renderExpanded(id, responses, defects, defectsByResp) {
             const d = defectsByResp[r.id];
             return `<div class="resp-item fail">
               <div style="flex:1">
-                <div class="resp-title">${r.inspection_form_items?.title || '—'}</div>
+                <div class="resp-title">${escHtml(r.inspection_form_items?.title || '—')}</div>
                 ${r.notes ? `<div class="resp-notes">${escHtml(r.notes)}</div>` : ''}
-                ${d ? d.map(def => `<div style="font-family:var(--mono);font-size:10px;color:var(--red);margin-top:3px">⚠ ${def.severity?.toUpperCase()} · ${escHtml(def.description)}</div>`).join('') : ''}
+                ${d ? d.map(def => `<div style="font-family:var(--mono);font-size:10px;color:var(--red);margin-top:3px">⚠ ${escHtml(def.severity?.toUpperCase())} · ${escHtml(def.description)}</div>`).join('') : ''}
               </div>
               <span class="resp-pf resp-fail">FAIL</span>
             </div>`;
@@ -771,7 +772,7 @@ function renderExpanded(id, responses, defects, defectsByResp) {
           </summary>
           <div class="response-list" style="margin-top:8px">
             ${passResponses.map(r => `<div class="resp-item pass">
-              <div class="resp-title">${r.inspection_form_items?.title || '—'}</div>
+              <div class="resp-title">${escHtml(r.inspection_form_items?.title || '—')}</div>
               <span class="resp-pf resp-pass">PASS</span>
             </div>`).join('')}
           </div>
@@ -783,7 +784,7 @@ function renderExpanded(id, responses, defects, defectsByResp) {
         <div class="response-list">
           ${otherResponses.map(r => `<div class="resp-item">
             <div style="flex:1">
-              <div class="resp-title">${r.inspection_form_items?.title || '—'}</div>
+              <div class="resp-title">${escHtml(r.inspection_form_items?.title || '—')}</div>
               <div class="resp-val">${escHtml(r.text_value || String(r.number_value) || '')}</div>
             </div>
           </div>`).join('')}
@@ -801,13 +802,13 @@ function renderExpanded(id, responses, defects, defectsByResp) {
       return `<div class="detail-grid">
         <div class="detail-section">
           <div class="detail-label">Asset</div>
-          <div class="detail-value" style="font-family:var(--mono);font-weight:600">${row.asset_number}</div>
-          <div class="detail-value" style="color:var(--gray);font-size:12px">${vehicle}</div>
+          <div class="detail-value" style="font-family:var(--mono);font-weight:600">${escHtml(row.asset_number)}</div>
+          <div class="detail-value" style="color:var(--gray);font-size:12px">${escHtml(vehicle)}</div>
         </div>
         <div class="detail-section">
           <div class="detail-label">Inspector</div>
-          <div class="detail-value">${row.inspector_name}</div>
-          ${row.supervisor ? `<div class="detail-value" style="color:var(--gray);font-size:12px">Supervisor: ${row.supervisor}</div>` : ''}
+          <div class="detail-value">${escHtml(row.inspector_name)}</div>
+          ${row.supervisor ? `<div class="detail-value" style="color:var(--gray);font-size:12px">Supervisor: ${escHtml(row.supervisor)}</div>` : ''}
         </div>
         <div class="detail-section">
           <div class="detail-label">Date &amp; Time</div>
@@ -815,11 +816,11 @@ function renderExpanded(id, responses, defects, defectsByResp) {
         </div>
         <div class="detail-section">
           <div class="detail-label">Form</div>
-          <div class="detail-value">${row.form_name}</div>
+          <div class="detail-value">${escHtml(row.form_name)}</div>
         </div>
         <div class="detail-section">
           <div class="detail-label">Result</div>
-          <div class="detail-value"><span class="mono-tag tag-${row.status}">${row.status.replace('_',' ')}</span></div>
+          <div class="detail-value"><span class="mono-tag tag-${row.status}">${escHtml(row.status.replace('_',' '))}</span></div>
         </div>
         <div class="detail-section">
           <div class="detail-label">Duration</div>
@@ -840,9 +841,9 @@ function renderExpanded(id, responses, defects, defectsByResp) {
           ${defects.map(d => `<div class="resp-item fail">
             <div style="flex:1">
               <div class="resp-title">${escHtml(d.description)}</div>
-              <div style="font-family:var(--mono);font-size:10px;color:var(--gray);margin-top:2px">${d.category || ''} · ${d.status || ''}</div>
+              <div style="font-family:var(--mono);font-size:10px;color:var(--gray);margin-top:2px">${escHtml(d.category || '')} · ${escHtml(d.status || '')}</div>
             </div>
-            <span class="mono-tag ${d.severity === 'critical' ? 'tag-failed' : 'tag-in_progress'}">${d.severity || '—'}</span>
+            <span class="mono-tag ${d.severity === 'critical' ? 'tag-failed' : 'tag-in_progress'}">${escHtml(d.severity || '—')}</span>
           </div>`).join('')}
         </div>` : ''}`;
     }
@@ -894,8 +895,8 @@ function showToast(msg, dur = 3000) {
 }
 
 function escHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 </script>
 </body>

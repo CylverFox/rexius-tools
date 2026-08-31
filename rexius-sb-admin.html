@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.supabase.co; connect-src https://toduddkyttuablausist.supabase.co https://*.supabase.co; img-src 'self' blob: data: https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'">
 <title>Rexius Fleet — Admin</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -1005,12 +1006,16 @@ function renderForms() {
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-sm" onclick="addFormItem('${f.id}')">+ Add Question</button>
-          <button class="btn btn-sm" onclick="renameForm('${f.id}','${esc(f.name)}')">Rename</button>
+          <button class="btn btn-sm btn-rename" data-form-id="${esc(f.id)}" data-form-name="${esc(f.name)}">Rename</button>
         </div>
       </div>
       <div class="card-body" style="padding:0 16px">${itemsHtml}</div>
     </div>`;
   }).join('');
+
+  // Attach Rename handlers from data-attributes (avoids data-in-onclick XSS bypass)
+  el.querySelectorAll('.btn-rename').forEach(btn =>
+    btn.addEventListener('click', e => renameForm(e.currentTarget.dataset.formId, e.currentTarget.dataset.formName)));
 }
 
 function renameForm(id, currentName) {
@@ -1132,9 +1137,16 @@ function renderAssignments() {
         <div style="font-size:11px;color:var(--gray)">${esc(teamName)}</div>
       </div>
       <div style="flex:2;min-width:200px">${overrideHtml}</div>
-      <button class="btn btn-sm" onclick="openAssignModal('${a.id}','${esc(a.asset_number)}','${esc(desc)}')">+ Assign Form</button>
+      <button class="btn btn-sm btn-assign" data-asset-id="${esc(a.id)}" data-asset-num="${esc(a.asset_number)}" data-asset-desc="${esc(desc)}">+ Assign Form</button>
     </div>`;
   }).join('');
+
+  // Attach Assign handlers from data-attributes (avoids data-in-onclick XSS bypass)
+  el.querySelectorAll('.btn-assign').forEach(btn =>
+    btn.addEventListener('click', e => {
+      const d = e.currentTarget.dataset;
+      openAssignModal(d.assetId, d.assetNum, d.assetDesc);
+    }));
 }
 
 function openAssignModal(assetId, assetNum, desc) {

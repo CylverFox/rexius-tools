@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.supabase.co; connect-src https://toduddkyttuablausist.supabase.co https://*.supabase.co; img-src 'self' blob: data: https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'">
 <title>Rexius Fleet — Work Orders</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -802,11 +803,11 @@ function woCard(w) {
   const pm = w.source === 'scheduled_service' ? `<span class="wo-tag" style="background:var(--green-light);color:var(--green);font-family:var(--mono);font-size:9px;font-weight:700">PM</span>` : '';
   const woNum = w.work_order_number ? `<span style="font-family:var(--mono);font-size:9px;color:var(--gray)">${w.work_order_number}</span>` : '';
   return `<div class="wo-card ${pri}" data-wo-id="${w.id}">
-    <div class="wo-asset" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${w.asset_number || '—'} ${cdl} ${pm} ${woNum}</div>
-    <div class="wo-desc">${w.description || '—'}</div>
+    <div class="wo-asset" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${esc(w.asset_number || '—')} ${cdl} ${pm} ${woNum}</div>
+    <div class="wo-desc">${esc(w.description || '—')}</div>
     <div class="wo-meta">
-      <span class="wo-tag tag-team">${w.team || '—'}</span>
-      ${w.shop ? `<span class="wo-tag tag-shop">${w.shop}</span>` : ''}
+      <span class="wo-tag tag-team">${esc(w.team || '—')}</span>
+      ${w.shop ? `<span class="wo-tag tag-shop">${esc(w.shop)}</span>` : ''}
       ${mech}${cost}
       <span class="wo-date">${fmtDate(w.date_opened)}</span>
     </div>
@@ -834,14 +835,14 @@ function renderBoard(stats, open, inprog, done) {
 function renderTable(stats, wos) {
   const rows = wos.length ? wos.map(w => {
     const pri  = w.priority ? `<span class="pri pri-${w.priority}">${w.priority}</span>` : `<span class="pri pri-null">—</span>`;
-    const st   = `<span class="st st-${w.status}">${w.status.replace('_', ' ')}</span>`;
-    const mech = w.mechanic || '<span style="color:var(--gray);font-size:11px">Unassigned</span>';
+    const st   = `<span class="st st-${w.status}">${esc(w.status.replace('_', ' '))}</span>`;
+    const mech = w.mechanic ? esc(w.mechanic) : '<span style="color:var(--gray);font-size:11px">Unassigned</span>';
     const cost = w.total_parts_cost ? `$${parseFloat(w.total_parts_cost).toLocaleString()}` : '—';
     return `<tr data-wo-id="${w.id}">
-      <td><span style="font-family:var(--mono);font-size:12px;font-weight:600">${w.asset_number || '—'}</span></td>
-      <td>${w.description || '—'}</td>
-      <td><span style="font-size:11px;color:var(--gray)">${w.team || '—'}</span></td>
-      <td><span style="font-size:11px;color:var(--gray)">${w.shop || '—'}</span></td>
+      <td><span style="font-family:var(--mono);font-size:12px;font-weight:600">${esc(w.asset_number || '—')}</span></td>
+      <td>${esc(w.description || '—')}</td>
+      <td><span style="font-size:11px;color:var(--gray)">${esc(w.team || '—')}</span></td>
+      <td><span style="font-size:11px;color:var(--gray)">${esc(w.shop || '—')}</span></td>
       <td>${pri}</td>
       <td>${st}</td>
       <td style="font-size:12px">${mech}</td>
@@ -925,11 +926,11 @@ function openDetail(id) {
 
   document.getElementById('detailBody').innerHTML = `
     <div class="modal-grid">
-      <div class="modal-section"><div class="modal-label">Status</div><div class="modal-value"><span class="st st-${w.status}">${w.status.replace('_', ' ')}</span></div></div>
-      <div class="modal-section"><div class="modal-label">Priority</div><div class="modal-value">${w.priority ? `<span class="pri pri-${w.priority}">${w.priority}</span>` : '—'}</div></div>
-      <div class="modal-section"><div class="modal-label">Group</div><div class="modal-value">${w.team || '—'}</div></div>
-      <div class="modal-section"><div class="modal-label">Shop</div><div class="modal-value">${w.shop ? `${w.shop}${w.region ? ` · ${w.region}` : ''}` : '—'}</div></div>
-      <div class="modal-section"><div class="modal-label">Currently Assigned</div><div class="modal-value">${w.mechanic || 'Unassigned'}</div></div>
+      <div class="modal-section"><div class="modal-label">Status</div><div class="modal-value"><span class="st st-${w.status}">${esc(w.status.replace('_', ' '))}</span></div></div>
+      <div class="modal-section"><div class="modal-label">Priority</div><div class="modal-value">${w.priority ? `<span class="pri pri-${w.priority}">${esc(w.priority)}</span>` : '—'}</div></div>
+      <div class="modal-section"><div class="modal-label">Group</div><div class="modal-value">${esc(w.team || '—')}</div></div>
+      <div class="modal-section"><div class="modal-label">Shop</div><div class="modal-value">${w.shop ? `${esc(w.shop)}${w.region ? ` · ${esc(w.region)}` : ''}` : '—'}</div></div>
+      <div class="modal-section"><div class="modal-label">Currently Assigned</div><div class="modal-value">${esc(w.mechanic || 'Unassigned')}</div></div>
       <div class="modal-section"><div class="modal-label">Date Opened</div><div class="modal-value">${fmtDate(w.date_opened)}</div></div>
       <div class="modal-section"><div class="modal-label">Parts Cost Est.</div><div class="modal-value">${cost}</div></div>
     </div>
@@ -1079,7 +1080,7 @@ function openDetail(id) {
       </div>`}
     </div>
 
-    ${w.notes ? `<div class="modal-section" style="margin-top:14px"><div class="modal-label">Notes</div><div class="modal-notes">${w.notes}</div></div>` : ''}`;
+    ${w.notes ? `<div class="modal-section" style="margin-top:14px"><div class="modal-label">Notes</div><div class="modal-notes">${esc(w.notes)}</div></div>` : ''}`;
 
   if (!readOnly) {
     document.getElementById('assignBtn').addEventListener('click', () => assignMechanic());

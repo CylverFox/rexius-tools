@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.supabase.co; connect-src https://toduddkyttuablausist.supabase.co https://*.supabase.co; img-src 'self' blob: data: https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'">
 <title>Rexius Fleet — Preventive Maintenance</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -749,24 +750,22 @@ function renderSchedule() {
         const woStatusColor = wo ? (wo.status === 'completed' ? 'var(--green)' : wo.status === 'in_progress' ? 'var(--amber)' : 'var(--blue)') : '';
         const woLabel = wo ? `WO ${wo.work_order_number} — ${wo.status.replace('_',' ')}${wo.mechanic ? ' · ' + wo.mechanic : ''}` : '';
 
-        // Action buttons depend on WO state
+        // Action buttons depend on WO state. Data lives in data-attributes (escaped as
+        // HTML attrs); handlers are attached after render — avoids the data-in-onclick bypass.
         let actions = '';
         if (!wo) {
-          // No WO — offer Create WO or Complete directly
           actions = `
-            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();createPmWO('${s.id}','${asset.id}','${esc(s.service_type)}','${esc(asset.asset_number)}','${urg}')">Create WO</button>
-            <button class="btn btn-sm" onclick="event.stopPropagation();openCompleteModal('${s.id}','${asset.id}','${esc(s.service_type)}','${esc(asset.asset_number)}')">Complete</button>
-            <button class="btn btn-sm" onclick="event.stopPropagation();openEditModal('${s.id}')">Edit</button>`;
+            <button class="btn btn-sm btn-primary pm-act" data-act="createWO" data-sid="${esc(s.id)}" data-aid="${esc(asset.id)}" data-svc="${esc(s.service_type)}" data-num="${esc(asset.asset_number)}" data-urg="${esc(urg)}">Create WO</button>
+            <button class="btn btn-sm pm-act" data-act="complete" data-sid="${esc(s.id)}" data-aid="${esc(asset.id)}" data-svc="${esc(s.service_type)}" data-num="${esc(asset.asset_number)}">Complete</button>
+            <button class="btn btn-sm pm-act" data-act="edit" data-sid="${esc(s.id)}">Edit</button>`;
         } else if (wo.status === 'completed') {
-          // WO completed — can still log directly or edit schedule
           actions = `
-            <button class="btn btn-sm" onclick="event.stopPropagation();openCompleteModal('${s.id}','${asset.id}','${esc(s.service_type)}','${esc(asset.asset_number)}')">Log Service</button>
-            <button class="btn btn-sm" onclick="event.stopPropagation();openEditModal('${s.id}')">Edit</button>`;
+            <button class="btn btn-sm pm-act" data-act="complete" data-sid="${esc(s.id)}" data-aid="${esc(asset.id)}" data-svc="${esc(s.service_type)}" data-num="${esc(asset.asset_number)}">Log Service</button>
+            <button class="btn btn-sm pm-act" data-act="edit" data-sid="${esc(s.id)}">Edit</button>`;
         } else {
-          // WO open or in_progress — don't create another, can still complete directly
           actions = `
-            <button class="btn btn-sm" onclick="event.stopPropagation();openCompleteModal('${s.id}','${asset.id}','${esc(s.service_type)}','${esc(asset.asset_number)}')">Complete</button>
-            <button class="btn btn-sm" onclick="event.stopPropagation();openEditModal('${s.id}')">Edit</button>`;
+            <button class="btn btn-sm pm-act" data-act="complete" data-sid="${esc(s.id)}" data-aid="${esc(asset.id)}" data-svc="${esc(s.service_type)}" data-num="${esc(asset.asset_number)}">Complete</button>
+            <button class="btn btn-sm pm-act" data-act="edit" data-sid="${esc(s.id)}">Edit</button>`;
         }
 
         return `<div class="service-row">
@@ -787,12 +786,29 @@ function renderSchedule() {
         <div class="asset-desc">${esc(desc) || '—'}</div>
         <div class="asset-team">${esc(asset.teams?.name || '—')}</div>
         <div class="asset-badges">${badges.join('')}</div>
-        <button class="btn btn-sm" onclick="event.stopPropagation();openAddModal('${asset.id}','${esc(asset.asset_number)}')">+ Add</button>
+        <button class="btn btn-sm pm-add" data-aid="${esc(asset.id)}" data-num="${esc(asset.asset_number)}">+ Add</button>
         <div class="expand-icon">▾</div>
       </div>
       <div class="service-list">${svcRows}</div>
     </div>`;
   }).join('');
+
+  // Attach action handlers from data-attributes (avoids data-in-onclick XSS bypass).
+  // stopPropagation keeps a button click from also toggling its parent asset card.
+  el.querySelectorAll('.pm-act').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const d = e.currentTarget.dataset;
+      if (d.act === 'createWO') createPmWO(d.sid, d.aid, d.svc, d.num, d.urg);
+      else if (d.act === 'complete') openCompleteModal(d.sid, d.aid, d.svc, d.num);
+      else if (d.act === 'edit') openEditModal(d.sid);
+    }));
+  el.querySelectorAll('.pm-add').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const d = e.currentTarget.dataset;
+      openAddModal(d.aid, d.num);
+    }));
 }
 
 function toggleAsset(id) {
@@ -1024,9 +1040,15 @@ function renderMeters() {
         ${m.engine_hours ? `<div class="meter-val">Hours: <strong>${m.engine_hours.toLocaleString()}</strong></div>` : ''}
         <div class="meter-val">Recorded: <strong>${dt}</strong></div>
       </div>
-      <button class="btn btn-sm" onclick="openMeterModalForAsset('${m.asset_id}','${esc(a?.asset_number||'')}')">Update</button>
+      <button class="btn btn-sm meter-update" data-aid="${esc(m.asset_id)}" data-num="${esc(a?.asset_number||'')}">Update</button>
     </div>`;
   }).join('');
+
+  el.querySelectorAll('.meter-update').forEach(btn =>
+    btn.addEventListener('click', e => {
+      const d = e.currentTarget.dataset;
+      openMeterModalForAsset(d.aid, d.num);
+    }));
 }
 
 function openMeterModal() {
@@ -1054,11 +1076,17 @@ function searchMeterAsset() {
   const matches = allAssets.filter(a => (a.asset_number||'').toLowerCase().includes(q) || (a.make||'').toLowerCase().includes(q)).slice(0,8);
   if (!matches.length) { results.style.display = 'none'; return; }
   results.style.display = 'block';
-  results.innerHTML = matches.map(a =>
-    `<div style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''" onclick="selectMeterAsset('${a.id}','${esc(a.asset_number)}','${esc([a.year,a.make,a.model].filter(Boolean).join(' '))}')">
-      <strong>${esc(a.asset_number)}</strong> ${esc([a.year,a.make,a.model].filter(Boolean).join(' '))}
-    </div>`
-  ).join('');
+  results.innerHTML = matches.map(a => {
+    const vdesc = [a.year,a.make,a.model].filter(Boolean).join(' ');
+    return `<div class="meter-result" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''" data-aid="${esc(a.id)}" data-num="${esc(a.asset_number)}" data-desc="${esc(vdesc)}">
+      <strong>${esc(a.asset_number)}</strong> ${esc(vdesc)}
+    </div>`;
+  }).join('');
+  results.querySelectorAll('.meter-result').forEach(row =>
+    row.addEventListener('click', e => {
+      const d = e.currentTarget.dataset;
+      selectMeterAsset(d.aid, d.num, d.desc);
+    }));
 }
 
 function selectMeterAsset(id, num, desc) {

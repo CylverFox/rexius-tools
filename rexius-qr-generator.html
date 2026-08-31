@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.supabase.co; connect-src https://toduddkyttuablausist.supabase.co https://*.supabase.co; img-src 'self' blob: data: https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'">
 <title>Rexius Fleet — QR Generator</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -466,6 +467,11 @@ async function loadAssets() {
 
 function getTeamRef(a) { return a.teams?.import_ref || 'unknown'; }
 function getTeamName(a) { return a.teams?.name || 'Unknown'; }
+// XSS guard: escape DB/admin text before it enters innerHTML or an attribute.
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
 function assetDesc(a) { return [a.year, a.make, a.model].filter(Boolean).join(' ') || '—'; }
 
 function getFilteredAssets() {
@@ -506,17 +512,17 @@ function renderAssetList() {
   let html = '';
   Object.entries(groups).sort((a,b) => a[1].name.localeCompare(b[1].name)).forEach(([key, g]) => {
     html += `<div class="team-group">
-      <div class="team-header" onclick="toggleTeam('${key}')">
-        <span>${g.name.toUpperCase()}</span>
+      <div class="team-header" onclick="toggleTeam('${esc(key)}')">
+        <span>${esc(g.name.toUpperCase())}</span>
         <span class="team-count">${g.assets.length}</span>
       </div>
-      <div id="tg-${key}">`;
+      <div id="tg-${esc(key)}">`;
     g.assets.forEach(a => {
       const sel = selected.has(a.id);
-      html += `<div class="asset-row ${sel?'selected':''}" onclick="toggleAsset('${a.id}')">
+      html += `<div class="asset-row ${sel?'selected':''}" onclick="toggleAsset('${esc(a.id)}')">
         <div class="asset-cb"><svg class="asset-cb-check" viewBox="0 0 8 8" fill="none"><path d="M1 4l2.5 2.5L7 1.5" stroke="#000" stroke-width="1.5" stroke-linecap="round"/></svg></div>
-        <span class="asset-num">${a.asset_number}</span>
-        <span class="asset-desc">${assetDesc(a)}</span>
+        <span class="asset-num">${esc(a.asset_number)}</span>
+        <span class="asset-desc">${esc(assetDesc(a))}</span>
         <div class="asset-status ${a.status==='in_service'?'status-in':'status-out'}"></div>
       </div>`;
     });
@@ -602,10 +608,11 @@ function renderQRs() {
     card.id = 'card-' + a.id;
     const desc = assetDesc(a);
     card.innerHTML = `<div class="qr-canvas-wrap" id="qr-${a.id}"></div>
-      <div class="qr-label">${a.asset_number}</div>
-      ${desc !== '—' ? `<div class="qr-sublabel">${desc}</div>` : ''}
-      <button class="qr-dl-btn" onclick="downloadSingle('${a.id}','${a.asset_number.replace(/'/g,"\\'")}')">↓ Download PNG</button>`;
+      <div class="qr-label">${esc(a.asset_number)}</div>
+      ${desc !== '—' ? `<div class="qr-sublabel">${esc(desc)}</div>` : ''}
+      <button class="qr-dl-btn" data-dl-id="${esc(a.id)}" data-dl-num="${esc(a.asset_number)}">↓ Download PNG</button>`;
     grid.appendChild(card);
+    card.querySelector('.qr-dl-btn').addEventListener('click', e => downloadSingle(e.currentTarget.dataset.dlId, e.currentTarget.dataset.dlNum));
     setTimeout(() => {
       generateQR(document.getElementById('qr-' + a.id), url, 120);
     }, 10);

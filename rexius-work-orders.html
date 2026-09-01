@@ -1572,21 +1572,33 @@ function searchAssets(q) {
   const drop = document.getElementById('assetDropdown');
   if (!q.trim()) { drop.style.display = 'none'; return; }
   const qn = q.toLowerCase().replace(/[\s\-_]/g, '');
-  const matches = allAssets.filter(a => {
+  // Tiered scoring: asset number matches always outrank vehicle-detail matches.
+  // Tier 0 = exact number, 1 = number prefix, 2 = number substring, 3 = make/model/year.
+  const scored = [];
+  allAssets.forEach(a => {
     const an   = (a.asset_number||'').toLowerCase().replace(/[\s\-_]/g, '');
     const desc = [a.make, a.model, a.year].filter(Boolean).join(' ').toLowerCase();
-    return an.includes(qn) || desc.includes(q.toLowerCase());
-  }).slice(0, 8);
+    let tier;
+    if (an === qn) tier = 0;
+    else if (an.startsWith(qn)) tier = 1;
+    else if (an.includes(qn)) tier = 2;
+    else if (desc.includes(q.toLowerCase())) tier = 3;
+    else return;
+    scored.push([tier, a]);
+  });
+  scored.sort((x, y) => x[0] - y[0]
+    || x[1].asset_number.localeCompare(y[1].asset_number, undefined, { numeric: true }));
+  const matches = scored.map(s => s[1]).slice(0, 8);
   if (!matches.length) { drop.style.display = 'none'; return; }
   drop.innerHTML = matches.map(a => {
     const desc = [a.year, a.make, a.model].filter(Boolean).join(' ');
     return `<div class="asset-opt"
-      data-asset-id="${a.id}"
-      data-asset-num="${a.asset_number}"
-      data-asset-desc="${desc}"
+      data-asset-id="${esc(a.id)}"
+      data-asset-num="${esc(a.asset_number)}"
+      data-asset-desc="${esc(desc)}"
       style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--surface);font-size:13px">
-      <span style="font-family:var(--mono);font-weight:600">${a.asset_number}</span>
-      <span style="font-size:11px;color:var(--gray);margin-left:8px">${desc}</span>
+      <span style="font-family:var(--mono);font-weight:600">${esc(a.asset_number)}</span>
+      <span style="font-size:11px;color:var(--gray);margin-left:8px">${esc(desc)}</span>
     </div>`;
   }).join('');
   drop.style.display = 'block';

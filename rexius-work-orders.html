@@ -108,6 +108,7 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
 .lane-title { font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
 .lane-count { font-family: var(--mono); font-size: 11px; color: var(--gray); }
 .lane-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
+.lane-body.scrollable { max-height: 70vh; overflow-y: auto; }
 
 .wo-card { background: var(--paper); border: 1px solid var(--border); border-left: 3px solid var(--border); padding: 11px 13px; cursor: pointer; transition: all .12s; position: relative; }
 .wo-card:hover { border-color: var(--green); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
@@ -490,6 +491,7 @@ sbAuth.auth.onAuthStateChange((_event, session) => { if (session) setAuthToken(s
 
 let currentUser = null;
 let currentTab  = 'board';
+let tableSort   = { key: 'date_opened', dir: 'desc' }; // shared by All Work Orders + This Week tabs
 let allWOs      = [];
 let allAssets   = [];
 let allPeople   = [];
@@ -563,6 +565,13 @@ document.addEventListener('click', e => {
   const tab = e.target.closest('.tab[data-tab]');
   if (tab) {
     switchTab(tab.dataset.tab);
+    return;
+  }
+
+  // Sortable table headers (All Work Orders / This Week)
+  const sortTh = e.target.closest('th[data-sort]');
+  if (sortTh) {
+    sortTable(sortTh.dataset.sort);
     return;
   }
 
@@ -827,12 +836,46 @@ function renderBoard(stats, open, inprog, done) {
       </div>
       <div class="lane">
         <div class="lane-header"><span class="lane-title">Completed</span><span class="lane-count">${done.length}</span></div>
-        <div class="lane-body">${done.length ? done.slice(0, 10).map(woCard).join('') : '<div class="empty"><div class="empty-icon">📋</div><p>None yet</p></div>'}</div>
+        <div class="lane-body scrollable">${done.length ? [...done].sort((a, b) => new Date(b.date_completed || b.date_opened || 0) - new Date(a.date_completed || a.date_opened || 0)).map(woCard).join('') : '<div class="empty"><div class="empty-icon">📋</div><p>None yet</p></div>'}</div>
       </div>
     </div>`;
 }
 
+const PRI_RANK = { urgent: 0, high: 1, normal: 2, low: 3 };
+const ST_RANK  = { open: 0, in_progress: 1, completed: 2 };
+
+function sortWOs(wos) {
+  const { key, dir } = tableSort;
+  const mult = dir === 'asc' ? 1 : -1;
+  return [...wos].sort((a, b) => {
+    let cmp;
+    if (key === 'date_opened') {
+      cmp = new Date(a.date_opened || 0) - new Date(b.date_opened || 0);
+    } else if (key === 'total_parts_cost') {
+      cmp = (parseFloat(a.total_parts_cost) || 0) - (parseFloat(b.total_parts_cost) || 0);
+    } else if (key === 'priority') {
+      cmp = (PRI_RANK[a.priority] ?? 9) - (PRI_RANK[b.priority] ?? 9);
+    } else if (key === 'status') {
+      cmp = (ST_RANK[a.status] ?? 9) - (ST_RANK[b.status] ?? 9);
+    } else {
+      cmp = String(a[key] || '').localeCompare(String(b[key] || ''), undefined, { numeric: true, sensitivity: 'base' });
+    }
+    return cmp * mult;
+  });
+}
+
+function sortTable(key) {
+  if (tableSort.key === key) {
+    tableSort.dir = tableSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    // Sensible first-click direction: dates + rank columns start desc/best-first, text starts asc
+    tableSort = { key, dir: key === 'date_opened' || key === 'total_parts_cost' ? 'desc' : 'asc' };
+  }
+  render();
+}
+
 function renderTable(stats, wos) {
+  wos = sortWOs(wos);
   const rows = wos.length ? wos.map(w => {
     const pri  = w.priority ? `<span class="pri pri-${w.priority}">${w.priority}</span>` : `<span class="pri pri-null">—</span>`;
     const st   = `<span class="st st-${w.status}">${esc(w.status.replace('_', ' '))}</span>`;
@@ -853,7 +896,10 @@ function renderTable(stats, wos) {
 
   document.getElementById('content').innerHTML = stats + `
     <table class="wo-table">
-      <thead><tr><th>Asset</th><th>Description</th><th>Group</th><th>Shop</th><th>Priority</th><th>Status</th><th>Mechanic</th><th>Cost</th><th>Date</th></tr></thead>
+      <thead><tr>${[
+        ['asset_number', 'Asset'], ['description', 'Description'], ['team', 'Group'], ['shop', 'Shop'],
+        ['priority', 'Priority'], ['status', 'Status'], ['mechanic', 'Mechanic'], ['total_parts_cost', 'Cost'], ['date_opened', 'Date'],
+      ].map(([k, label]) => `<th data-sort="${k}">${label}${tableSort.key === k ? (tableSort.dir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }

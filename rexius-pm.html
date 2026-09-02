@@ -87,6 +87,7 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
 .pill-week { background: var(--amber); color: #fff; }
 .pill-month { background: #92600a; color: #fff; }
 .pill-ok { background: var(--green-light); color: var(--green); }
+.pill-none { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
 .expand-icon { margin-left: auto; color: var(--gray); font-size: 14px; transition: transform .15s; }
 .asset-card.expanded .expand-icon { transform: rotate(180deg); }
 
@@ -340,9 +341,15 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
           <input class="form-input" id="editNextMiles" type="number" placeholder="optional">
         </div>
       </div>
-      <div class="form-row">
-        <label class="form-label">Supplier / Shop</label>
-        <input class="form-input" id="editSupplier" placeholder="e.g. Rexius Auto Shop">
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Next Due Hours</label>
+          <input class="form-input" id="editNextHours" type="number" placeholder="optional">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Supplier / Shop</label>
+          <input class="form-input" id="editSupplier" placeholder="e.g. Rexius Auto Shop">
+        </div>
       </div>
       <div class="form-row">
         <label class="form-label">Notes</label>
@@ -400,9 +407,13 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
           <input class="form-input" id="addNextMiles" type="number" placeholder="optional">
         </div>
         <div class="form-row">
-          <label class="form-label">Supplier / Shop</label>
-          <input class="form-input" id="addSupplier" placeholder="optional">
+          <label class="form-label">Next Due Hours</label>
+          <input class="form-input" id="addNextHours" type="number" placeholder="optional">
         </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Supplier / Shop</label>
+        <input class="form-input" id="addSupplier" placeholder="optional">
       </div>
     </div>
     <div class="modal-footer">
@@ -665,6 +676,15 @@ function intervalLabel(s) {
   if (s.interval_hours) parts.push(`${s.interval_hours}h`);
   return parts.join(' / ') || '—';
 }
+// Due label: date if set, otherwise meter targets (hours/miles). Hours-based
+// schedules carry next_due_hours with next_due_date null — previously rendered '—'.
+function dueLabel(s) {
+  if (s.next_due_date) return `${fmtDate(s.next_due_date)} <span style="opacity:.7;font-size:9px">${daysLabel(s.next_due_date)}</span>`;
+  const parts = [];
+  if (s.next_due_hours) parts.push(`@ ${s.next_due_hours.toLocaleString()} hrs`);
+  if (s.next_due_miles) parts.push(`@ ${s.next_due_miles.toLocaleString()} mi`);
+  return parts.join(' · ') || '—';
+}
 
 // ── Schedule tab ──────────────────────────────────────────────────
 function renderSchedule() {
@@ -707,7 +727,25 @@ function renderSchedule() {
     byAsset[id].schedules.push(s);
   });
 
-  // Sort assets by worst urgency
+  // Full roster: every non-deleted asset is visible, including those with no
+  // active schedules — they render as blanks so the shop can create intervals.
+  // Blanks are suppressed when a service-type or urgency filter is active
+  // (they can't match one). Assets whose schedules exist but were filtered
+  // out stay hidden, matching prior filter behavior.
+  if (!svcType && activeUrgency === 'all') {
+    const scheduledIds = new Set(allSchedules.map(s => s.asset_id));
+    allAssets.forEach(a => {
+      if (byAsset[a.id] || scheduledIds.has(a.id)) return;
+      if (teamId && a.team_id !== teamId) return;
+      if (q) {
+        const hay = [a.asset_number, a.make, a.model].filter(Boolean).join(' ').toLowerCase();
+        if (!hay.includes(q)) return;
+      }
+      byAsset[a.id] = { asset: a, schedules: [] };
+    });
+  }
+
+  // Sort assets by worst urgency (blanks: Math.min of empty list is Infinity → they sort last)
   const assetGroups = Object.values(byAsset).sort((a, b) => {
     const aWorst = Math.min(...a.schedules.map(s => urgencySort(getUrgency(s.next_due_date))));
     const bWorst = Math.min(...b.schedules.map(s => urgencySort(getUrgency(s.next_due_date))));
@@ -733,14 +771,18 @@ function renderSchedule() {
 
     const badges = [];
     const urgCounts = schedules.reduce((acc, s) => { const u = getUrgency(s.next_due_date); acc[u] = (acc[u]||0)+1; return acc; }, {});
-    if (urgCounts.overdue) badges.push(`<span class="urgency-pill pill-overdue">${urgCounts.overdue} overdue</span>`);
-    if (urgCounts.week) badges.push(`<span class="urgency-pill pill-week">${urgCounts.week} this week</span>`);
-    if (urgCounts.month) badges.push(`<span class="urgency-pill pill-month">${urgCounts.month} this month</span>`);
-    if (!urgCounts.overdue && !urgCounts.week && !urgCounts.month) badges.push(`<span class="urgency-pill pill-ok">up to date</span>`);
+    if (!schedules.length) {
+      badges.push(`<span class="urgency-pill pill-none">no pm schedule</span>`);
+    } else {
+      if (urgCounts.overdue) badges.push(`<span class="urgency-pill pill-overdue">${urgCounts.overdue} overdue</span>`);
+      if (urgCounts.week) badges.push(`<span class="urgency-pill pill-week">${urgCounts.week} this week</span>`);
+      if (urgCounts.month) badges.push(`<span class="urgency-pill pill-month">${urgCounts.month} this month</span>`);
+      if (!urgCounts.overdue && !urgCounts.week && !urgCounts.month) badges.push(`<span class="urgency-pill pill-ok">up to date</span>`);
+    }
 
     const desc = [asset.year, asset.make, asset.model].filter(Boolean).join(' ');
 
-    const svcRows = schedules
+    const svcRows = schedules.length ? schedules
       .sort((a, b) => urgencySort(getUrgency(a.next_due_date)) - urgencySort(getUrgency(b.next_due_date)))
       .map(s => {
         const urg = getUrgency(s.next_due_date);
@@ -771,14 +813,15 @@ function renderSchedule() {
         return `<div class="service-row">
           <div class="svc-type">${esc(s.service_type)}</div>
           <div style="flex:1;min-width:120px">
-            <div class="svc-due ${urgClass}">${fmtDate(s.next_due_date)} <span style="opacity:.7;font-size:9px">${daysLabel(s.next_due_date)}</span></div>
+            <div class="svc-due ${urgClass}">${dueLabel(s)}</div>
             ${wo ? `<div style="font-family:var(--mono);font-size:10px;color:${woStatusColor};margin-top:2px">${esc(woLabel)}</div>` : ''}
           </div>
           <div class="svc-interval">${intervalLabel(s)}</div>
           <div class="svc-last">Last: ${esc(lastSvc)}</div>
           <div class="svc-actions">${actions}</div>
         </div>`;
-      }).join('');
+      }).join('')
+      : `<div class="service-row"><div class="svc-type" style="color:var(--gray)">No service intervals yet — use + Add to create one.</div></div>`;
 
     return `<div class="asset-card${expanded ? ' expanded' : ''}" data-asset-id="${asset.id}" onclick="toggleAsset('${asset.id}')">
       <div class="asset-head">
@@ -881,6 +924,14 @@ document.getElementById('completeSubmitBtn').addEventListener('click', async () 
   }
   let nextDueMiles = null;
   if (miles && sched.interval_miles) nextDueMiles = miles + sched.interval_miles;
+  let nextDueHours = null;
+  if (hours && sched.interval_hours) nextDueHours = hours + sched.interval_hours;
+
+  // Warn instead of silently clearing the target: an hours-interval schedule
+  // completed without an hours reading has no way to compute its next target.
+  if (sched.interval_hours && !hours) {
+    if (!confirm('This is an hours-based schedule but no engine hours were entered. The next due hours target will be cleared. Continue?')) return;
+  }
 
   // Update schedule
   await patch(`asset_service_schedules?id=eq.${schedId}`, {
@@ -889,6 +940,7 @@ document.getElementById('completeSubmitBtn').addEventListener('click', async () 
     last_service_hours: hours,
     next_due_date: nextDueDate,
     next_due_miles: nextDueMiles,
+    next_due_hours: nextDueHours,
     updated_at: new Date().toISOString(),
   });
 
@@ -937,6 +989,7 @@ function openEditModal(schedId) {
   document.getElementById('editNotifyDays').value = s.notify_days_before || 7;
   document.getElementById('editNextDate').value = s.next_due_date || '';
   document.getElementById('editNextMiles').value = s.next_due_miles || '';
+  document.getElementById('editNextHours').value = s.next_due_hours || '';
   document.getElementById('editSupplier').value = s.supplier || '';
   document.getElementById('editNotes').value = s.notes || '';
   openModal('editModal');
@@ -952,6 +1005,7 @@ document.getElementById('editSubmitBtn').addEventListener('click', async () => {
     notify_days_before: parseInt(document.getElementById('editNotifyDays').value) || 7,
     next_due_date: document.getElementById('editNextDate').value || null,
     next_due_miles: parseInt(document.getElementById('editNextMiles').value) || null,
+    next_due_hours: parseInt(document.getElementById('editNextHours').value) || null,
     supplier: document.getElementById('editSupplier').value.trim() || null,
     notes: (document.getElementById('editNotes').value.trim() || '') + ` [edited by ${currentUser}]`,
     updated_at: new Date().toISOString(),
@@ -982,6 +1036,7 @@ function openAddModal(assetId, assetNum) {
   document.getElementById('addHours').value = '';
   document.getElementById('addNextDate').value = '';
   document.getElementById('addNextMiles').value = '';
+  document.getElementById('addNextHours').value = '';
   document.getElementById('addSupplier').value = '';
   openModal('addModal');
 }
@@ -998,6 +1053,7 @@ document.getElementById('addSubmitBtn').addEventListener('click', async () => {
     interval_hours: parseInt(document.getElementById('addHours').value) || null,
     next_due_date: document.getElementById('addNextDate').value || null,
     next_due_miles: parseInt(document.getElementById('addNextMiles').value) || null,
+    next_due_hours: parseInt(document.getElementById('addNextHours').value) || null,
     supplier: document.getElementById('addSupplier').value.trim() || null,
     notes: `Added by ${currentUser}`,
     is_active: true,

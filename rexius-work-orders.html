@@ -330,6 +330,7 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
     </div>
     <div class="modal-body" id="detailBody"></div>
     <div class="modal-footer">
+      <button class="m-btn" id="detailHistoryBtn" style="margin-right:auto">Vehicle History</button>
       <button class="m-btn danger" id="detailCancelBtn">Cancel WO</button>
       <button class="m-btn" data-close="detailModal">Close</button>
       <button class="m-btn primary" id="detailFollowUpBtn" style="display:none">Create Follow-up Work Order</button>
@@ -1176,6 +1177,16 @@ function openDetail(id) {
       shopId: w.shop_id,
     });
   };
+
+  // Vehicle History: opens the history tool for this WO's asset in a new tab.
+  const vhb = document.getElementById('detailHistoryBtn');
+  const vhAssetId = w.asset_id || allAssets.find(a => a.asset_number === w.asset_number)?.id;
+  if (vhAssetId) {
+    vhb.style.display = '';
+    vhb.onclick = () => window.open(`rexius-vehicle-history.html?asset=${encodeURIComponent(vhAssetId)}`, '_blank', 'noopener');
+  } else {
+    vhb.style.display = 'none';
+  }
 
   document.getElementById('detailModal').classList.add('open');
   rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'view_wo', p_metadata: { wo_id: id, asset: w.asset_number } });

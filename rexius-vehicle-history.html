@@ -1,1 +1,741 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.supabase.co; connect-src https://toduddkyttuablausist.supabase.co https://*.supabase.co; img-src 'self' blob: data: https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'">
+<title>Rexius Fleet — Vehicle History</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@300;400;500;600&display=swap');
+
+:root {
+  --ink: #0d0d0d;
+  --paper: #fafaf8;
+  --surface: #f3f2ee;
+  --border: #d8d6d0;
+  --green: #1a5c32;
+  --green-mid: #2d7d4a;
+  --green-light: #e8f5ee;
+  --red: #8b1a1a;
+  --red-light: #fdf0f0;
+  --amber: #7a4a00;
+  --amber-light: #fef8ec;
+  --orange: #7a3500;
+  --orange-light: #fff3e8;
+  --blue: #1a3c6e;
+  --blue-light: #eef3fb;
+  --gray: #6b7280;
+  --mono: 'IBM Plex Mono', monospace;
+  --display: 'Barlow Condensed', sans-serif;
+  --body: 'Barlow', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: var(--body); background: var(--surface); color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+#loginScreen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--ink); background-image: repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,.03) 39px,rgba(255,255,255,.03) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,.03) 39px,rgba(255,255,255,.03) 40px); }
+.login-box { background: var(--paper); border: 1px solid #333; width: 100%; max-width: 400px; padding: 36px; }
+.login-wordmark { font-family: var(--display); font-size: 11px; font-weight: 600; letter-spacing: .25em; text-transform: uppercase; color: var(--green); margin-bottom: 4px; }
+.login-title { font-family: var(--display); font-size: 30px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: #666; margin-bottom: 24px; }
+.login-label { display: block; font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #555; margin-bottom: 5px; }
+.login-input { width: 100%; font-family: var(--body); font-size: 15px; padding: 10px 13px; border: 1px solid var(--border); background: var(--paper); color: var(--ink); margin-bottom: 12px; outline: none; transition: border-color .15s; }
+.login-input:focus { border-color: var(--green); }
+.login-btn { width: 100%; font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 12px; border: none; background: var(--ink); color: var(--paper); cursor: pointer; margin-top: 4px; transition: background .12s; }
+.login-btn:hover { background: var(--green); }
+.login-err { font-size: 12px; color: var(--red); margin-top: 6px; display: none; }
+.login-err.show { display: block; }
+
+#app { display: none; flex-direction: column; min-height: 100vh; }
+#app.active { display: flex; }
+
+.topbar { background: var(--ink); color: var(--paper); padding: 0 20px; height: 50px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--green); flex-shrink: 0; position: sticky; top: 0; z-index: 100; }
+.topbar-left { display: flex; align-items: center; gap: 16px; }
+.topbar-brand { font-family: var(--display); font-size: 14px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--green); }
+.topbar-title { font-family: var(--display); font-size: 13px; font-weight: 500; letter-spacing: .06em; color: rgba(255,255,255,.5); text-transform: uppercase; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.topbar-user { font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,.4); }
+.topbar-user span { color: var(--green); }
+.logout-btn { font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,.35); background: none; border: 1px solid rgba(255,255,255,.12); padding: 4px 9px; cursor: pointer; transition: all .12s; text-decoration: none; display: inline-block; }
+.logout-btn:hover { border-color: var(--green); color: var(--green); }
+
+/* Asset header */
+.asset-head { background: var(--paper); border-bottom: 1px solid var(--border); padding: 18px 20px; display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.asset-num { font-family: var(--display); font-size: 38px; font-weight: 700; line-height: 1; }
+.asset-sub { font-size: 14px; color: #444; margin-top: 4px; }
+.asset-badges { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+.asset-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, auto)); gap: 6px 26px; margin-left: auto; }
+.fact-l { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--gray); }
+.fact-v { font-family: var(--mono); font-size: 13px; color: var(--ink); margin-top: 1px; }
+.driver-notice { width: 100%; background: var(--amber-light); border-left: 3px solid var(--amber); padding: 8px 12px; font-size: 13px; color: var(--amber); }
+
+.badge { font-family: var(--mono); font-size: 10px; font-weight: 600; padding: 3px 8px; letter-spacing: .04em; text-transform: uppercase; }
+.badge-cdl { background: #1e3a5f; color: #fff; }
+.badge-active { background: var(--green-light); color: var(--green); }
+.badge-inactive { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
+.badge-dept { background: var(--blue-light); color: var(--blue); }
+
+.toolbar { padding: 12px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--paper); border-bottom: 1px solid var(--border); position: sticky; top: 50px; z-index: 90; }
+.tb-search { font-family: var(--body); font-size: 13px; padding: 7px 11px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); outline: none; width: 280px; }
+.tb-search:focus { border-color: var(--green); background: var(--paper); }
+.tb-sep { width: 1px; height: 22px; background: var(--border); }
+.tb-btn { font-family: var(--mono); font-size: 11px; font-weight: 500; padding: 7px 14px; border: 1px solid var(--border); background: var(--paper); color: #444; cursor: pointer; transition: all .12s; white-space: nowrap; letter-spacing: .02em; }
+.tb-btn:hover { border-color: var(--green); color: var(--green); }
+.tb-btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+.mode-btn.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.chip { font-family: var(--mono); font-size: 10px; font-weight: 500; padding: 5px 10px; border: 1px solid var(--border); background: var(--paper); color: var(--gray); cursor: pointer; letter-spacing: .03em; text-transform: uppercase; transition: all .12s; }
+.chip.on { background: var(--green-light); border-color: var(--green); color: var(--green); }
+
+.content { flex: 1; padding: 20px; overflow-y: auto; max-width: 1000px; width: 100%; margin: 0 auto; }
+
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.stat { background: var(--paper); border: 1px solid var(--border); padding: 14px 16px; position: relative; }
+.stat::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--border); }
+.stat.wo::before { background: var(--green); }
+.stat.def::before { background: var(--red); }
+.stat.svc::before { background: var(--blue); }
+.stat.cost::before { background: var(--amber); }
+.stat-n { font-family: var(--display); font-size: 32px; font-weight: 700; line-height: 1; }
+.stat-l { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--gray); margin-top: 3px; }
+
+/* Timeline */
+.tl-group { margin-bottom: 22px; }
+.tl-year { font-family: var(--display); font-size: 20px; font-weight: 700; letter-spacing: .04em; color: var(--ink); border-bottom: 2px solid var(--ink); padding-bottom: 4px; margin-bottom: 10px; }
+.tl-card { background: var(--paper); border: 1px solid var(--border); border-left: 3px solid var(--border); padding: 11px 13px; margin-bottom: 8px; }
+.tl-card.t-wo { border-left-color: var(--green); }
+.tl-card.t-defect { border-left-color: var(--red); }
+.tl-card.t-service { border-left-color: var(--blue); }
+.tl-card.t-historical { border-left-color: var(--gray); }
+.tl-card.t-inspection { border-left-color: var(--amber); }
+.tl-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tl-type { font-family: var(--mono); font-size: 9px; font-weight: 700; padding: 2px 7px; letter-spacing: .06em; text-transform: uppercase; }
+.tt-wo { background: var(--green-light); color: var(--green); }
+.tt-defect { background: var(--red-light); color: var(--red); }
+.tt-service { background: var(--blue-light); color: var(--blue); }
+.tt-historical { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
+.tt-inspection { background: var(--amber-light); color: var(--amber); }
+.tl-date { font-family: var(--mono); font-size: 11px; color: var(--gray); margin-left: auto; white-space: nowrap; }
+.tl-title { font-size: 14px; color: var(--ink); margin-top: 5px; line-height: 1.35; }
+.tl-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+.tl-tag { font-family: var(--mono); font-size: 10px; font-weight: 500; padding: 2px 6px; letter-spacing: .03em; }
+.tag-mech { background: var(--green-light); color: var(--green); }
+.tag-cost { background: var(--amber-light); color: var(--amber); }
+.tag-meter { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
+.tag-cert { background: var(--blue-light); color: var(--blue); }
+.tl-notes { font-size: 12px; color: #555; margin-top: 6px; line-height: 1.5; background: var(--surface); padding: 7px 10px; border-left: 2px solid var(--border); white-space: pre-wrap; }
+.st { font-family: var(--mono); font-size: 10px; font-weight: 600; padding: 3px 8px; letter-spacing: .04em; text-transform: uppercase; }
+.st-open { background: var(--red-light); color: var(--red); }
+.st-in_progress { background: var(--amber-light); color: var(--amber); }
+.st-completed, .st-corrected, .st-passed { background: var(--green-light); color: var(--green); }
+.st-cancelled { background: var(--surface); color: var(--gray); }
+.st-failed { background: var(--red-light); color: var(--red); }
+.sev { font-family: var(--mono); font-size: 10px; font-weight: 700; padding: 2px 7px; text-transform: uppercase; }
+.sev-critical, .sev-major { background: var(--red-light); color: var(--red); }
+.sev-minor { background: var(--amber-light); color: var(--amber); }
+
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 8px; }
+.photo-thumb { aspect-ratio: 1; background: var(--surface); border: 1px solid var(--border); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-loading { font-family: var(--mono); font-size: 16px; color: var(--gray); }
+
+/* Search results */
+.sr-note { font-family: var(--mono); font-size: 11px; color: var(--gray); margin-bottom: 12px; }
+.sr-card { background: var(--paper); border: 1px solid var(--border); border-left: 3px solid var(--border); padding: 11px 13px; margin-bottom: 8px; cursor: pointer; transition: all .12s; }
+.sr-card:hover { border-color: var(--green); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.sr-card.t-wo { border-left-color: var(--green); }
+.sr-card.t-defect { border-left-color: var(--red); }
+.sr-card.t-service { border-left-color: var(--blue); }
+.sr-card.t-historical { border-left-color: var(--gray); }
+.sr-snippet { font-size: 13px; color: #333; margin-top: 5px; line-height: 1.45; }
+.sr-snippet b { background: #fef3c0; color: var(--ink); font-weight: 600; padding: 0 1px; }
+.sr-asset { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--ink); background: var(--surface); border: 1px solid var(--border); padding: 2px 7px; }
+.tier { font-family: var(--mono); font-size: 9px; font-weight: 600; padding: 2px 7px; letter-spacing: .05em; text-transform: uppercase; }
+.tier-0 { background: var(--green-light); color: var(--green); }
+.tier-1 { background: var(--blue-light); color: var(--blue); }
+.tier-2 { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
+.sr-open { font-family: var(--mono); font-size: 10px; color: var(--green); text-decoration: underline; margin-left: auto; white-space: nowrap; }
+.sr-detail { display: none; margin-top: 8px; }
+.sr-card.expanded .sr-detail { display: block; }
+
+/* Asset picker */
+.picker-wrap { max-width: 640px; margin: 40px auto; }
+.picker-title { font-family: var(--display); font-size: 26px; font-weight: 700; margin-bottom: 12px; }
+.picker-list { margin-top: 10px; }
+.picker-row { background: var(--paper); border: 1px solid var(--border); padding: 10px 14px; margin-bottom: 6px; cursor: pointer; display: flex; gap: 12px; align-items: baseline; transition: all .12s; }
+.picker-row:hover { border-color: var(--green); }
+.picker-num { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.picker-desc { font-size: 13px; color: #555; }
+
+.empty { text-align: center; padding: 40px 20px; color: var(--gray); }
+.empty-icon { font-size: 32px; opacity: .3; margin-bottom: 8px; }
+.empty p { font-size: 13px; font-family: var(--mono); }
+
+.toast { position: fixed; bottom: 20px; right: 20px; background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: 12px; padding: 10px 16px; border-left: 3px solid var(--green); opacity: 0; transform: translateY(6px); transition: all .2s; z-index: 9999; pointer-events: none; }
+.toast.show { opacity: 1; transform: none; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-wordmark">Rexius Forest By-Products</div>
+    <div class="login-title">Vehicle History</div>
+    <div class="login-sub">Full repair &amp; inspection history — mechanics &amp; managers</div>
+    <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+    <label class="login-label">Email</label>
+    <input class="login-input" id="loginEmail" type="email" placeholder="you@rexius.com" autocomplete="username">
+    <label class="login-label">Password</label>
+    <input class="login-input" id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password">
+    <button class="login-btn" id="loginBtn">Enter</button>
+    <div class="login-err" id="loginErr">Incorrect email or password.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-brand">Rexius Fleet</div>
+      <div class="topbar-title">Vehicle History</div>
+    </div>
+    <div class="topbar-right">
+      <a class="logout-btn" href="rexius-work-orders.html">Work Orders</a>
+      <button class="logout-btn" id="changeAssetBtn">Change Vehicle</button>
+      <div class="topbar-user">Signed in as <span id="topUser">—</span></div>
+      <button class="logout-btn" id="logoutBtn">Sign out</button>
+    </div>
+  </div>
+
+  <div id="assetHead" class="asset-head" style="display:none"></div>
+
+  <div class="toolbar" id="toolbarEl" style="display:none">
+    <input class="tb-search" id="searchBox" placeholder="Search history — e.g. fuel injection, brake, coolant leak...">
+    <button class="tb-btn mode-btn on" id="modeThis">This Vehicle</button>
+    <button class="tb-btn mode-btn" id="modeSimilar">Similar Vehicles</button>
+    <div class="tb-sep"></div>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.06em">Show:</span>
+    <button class="chip on" data-type="wo">Work Orders</button>
+    <button class="chip on" data-type="defect">Defects</button>
+    <button class="chip on" data-type="service">Service</button>
+    <button class="chip on" data-type="historical">Historical</button>
+    <button class="chip" data-type="inspection">Inspections</button>
+    <button class="chip" data-type="media">Photos &amp; Docs</button>
+  </div>
+
+  <div class="content" id="content">
+    <div class="empty"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA = 'https://toduddkyttuablausist.supabase.co';
+const KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZHVkZGt5dHR1YWJsYXVzaXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NjY5MTEsImV4cCI6MjA5NjI0MjkxMX0.ZdtMIuc9kEo7-x0Lr-y2--F1aqkurbLJ0YxeQD2ggDQ';
+// H.Authorization is updated to the logged-in user's token by setAuthToken(); every
+// fetch below reads this same object, so all calls go out as the authenticated user.
+const H = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
+const BUCKET = 'rexius-fleet-photos';
+
+const sbAuth = supabase.createClient(SUPA, KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+});
+function setAuthToken(session) {
+  H.Authorization = `Bearer ${session ? session.access_token : KEY}`;
+}
+sbAuth.auth.onAuthStateChange((_event, session) => { if (session) setAuthToken(session); });
+
+let currentUser = null;
+let assetId     = null;
+let history     = null;   // full get_vehicle_history payload
+let searchMode  = 'this'; // 'this' | 'similar'
+let allAssets   = [];     // for the picker
+const shownTypes = new Set(['wo', 'defect', 'service', 'historical']);
+let searchTimer = null;
+
+// ── Boot ───────────────────────────────────────────────────────────
+const urlParams = new URLSearchParams(location.search);
+assetId = urlParams.get('asset') || null;
+
+document.getElementById('loginBtn').addEventListener('click', () => doLogin());
+document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('loginEmail').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('logoutBtn').addEventListener('click', () => doLogout());
+document.getElementById('changeAssetBtn').addEventListener('click', () => showPicker());
+document.getElementById('searchBox').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => runSearch(), 300);
+});
+document.getElementById('modeThis').addEventListener('click', () => setMode('this'));
+document.getElementById('modeSimilar').addEventListener('click', () => setMode('similar'));
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+  const t = c.dataset.type;
+  if (shownTypes.has(t)) { shownTypes.delete(t); c.classList.remove('on'); }
+  else { shownTypes.add(t); c.classList.add('on'); }
+  if (!document.getElementById('searchBox').value.trim()) renderTimeline();
+}));
+
+tryRestoreSession();
+
+// ── Auth ───────────────────────────────────────────────────────────
+async function resolveIdentity(session) {
+  try {
+    const id = await rpc('get_my_identity', {});
+    if (id && id.name) return id.name;
+  } catch(e) {}
+  return session?.user?.email || 'Staff';
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const err   = document.getElementById('loginErr');
+  if (!email) { err.textContent = 'Please enter your email.'; err.classList.add('show'); return; }
+  err.classList.remove('show');
+  const { data, error } = await sbAuth.auth.signInWithPassword({ email, password: pass });
+  if (error) { err.textContent = error.message || 'Incorrect email or password.'; err.classList.add('show'); return; }
+  setAuthToken(data.session);
+  const name = await resolveIdentity(data.session);
+  rpc('log_access', { p_tool_name: 'vehicle-history', p_user_name: name, p_action: 'login' });
+  enterApp(name);
+}
+
+async function tryRestoreSession() {
+  const { data: { session } } = await sbAuth.auth.getSession();
+  if (session) {
+    setAuthToken(session);
+    const name = await resolveIdentity(session);
+    enterApp(name);
+  }
+}
+
+async function doLogout() {
+  rpc('log_access', { p_tool_name: 'vehicle-history', p_user_name: currentUser, p_action: 'logout' });
+  try { await sbAuth.auth.signOut(); } catch(e) {}
+  location.reload();
+}
+
+function enterApp(name) {
+  currentUser = name;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').classList.add('active');
+  document.getElementById('topUser').textContent = name;
+  if (assetId) loadHistory();
+  else showPicker();
+}
+
+// ── Data ───────────────────────────────────────────────────────────
+async function rpc(fn, body) {
+  const r = await fetch(`${SUPA}/rest/v1/rpc/${fn}`, { method: 'POST', headers: H, body: JSON.stringify(body) });
+  return r.json();
+}
+
+async function loadHistory() {
+  showSpinner();
+  document.getElementById('toolbarEl').style.display = '';
+  try {
+    history = await rpc('get_vehicle_history', { p_asset_id: assetId });
+    if (!history || !history.asset) {
+      document.getElementById('content').innerHTML = '<div class="empty"><div class="empty-icon">⚠</div><p>Vehicle not found</p></div>';
+      document.getElementById('assetHead').style.display = 'none';
+      return;
+    }
+    renderAssetHead();
+    const preQ = urlParams.get('q');
+    if (preQ && !document.getElementById('searchBox').value) {
+      document.getElementById('searchBox').value = preQ;
+      runSearch();
+    } else {
+      renderTimeline();
+    }
+    rpc('log_access', { p_tool_name: 'vehicle-history', p_user_name: currentUser, p_action: 'view_history', p_metadata: { asset_id: assetId, asset: history.asset.asset_number } });
+  } catch(e) {
+    console.error(e);
+    document.getElementById('content').innerHTML = '<div class="empty"><div class="empty-icon">⚠</div><p>Failed to load history</p></div>';
+  }
+}
+
+// ── Asset header ───────────────────────────────────────────────────
+function renderAssetHead() {
+  const a = history.asset;
+  const m = history.latest_meter || {};
+  const head = document.getElementById('assetHead');
+  head.style.display = '';
+  const badges = [];
+  if (a.is_cdl) badges.push('<span class="badge badge-cdl">CDL</span>');
+  badges.push(`<span class="badge ${a.status === 'active' ? 'badge-active' : 'badge-inactive'}">${esc(a.status || 'unknown')}</span>`);
+  if (a.dept != null) badges.push(`<span class="badge badge-dept">Dept ${esc(String(a.dept))}</span>`);
+  if (a.asset_subtype) badges.push(`<span class="badge badge-inactive">${esc(a.asset_subtype)}</span>`);
+  const facts = [];
+  const fact = (l, v) => { if (v) facts.push(`<div><div class="fact-l">${l}</div><div class="fact-v">${esc(String(v))}</div></div>`); };
+  fact('VIN', a.vin);
+  fact('Plate', a.license_plate);
+  fact('Odometer', m.odometer != null ? Number(m.odometer).toLocaleString() + ' mi' : null);
+  fact('Engine Hours', m.engine_hours != null ? Number(m.engine_hours).toLocaleString() + ' hrs' : null);
+  fact('In Service', a.in_service_since ? fmtDate(a.in_service_since) : null);
+  fact('Tires', a.tire_size);
+  head.innerHTML = `
+    <div>
+      <div class="asset-num">${esc(a.asset_number)}</div>
+      <div class="asset-sub">${esc([a.year, a.make, a.model].filter(Boolean).join(' ')) || '—'}${a.color ? ' · ' + esc(a.color) : ''}</div>
+      <div class="asset-badges">${badges.join('')}</div>
+    </div>
+    <div class="asset-facts">${facts.join('')}</div>
+    ${a.driver_notice ? `<div class="driver-notice"><strong>Driver notice:</strong> ${esc(a.driver_notice)}</div>` : ''}`;
+}
+
+// ── Timeline ───────────────────────────────────────────────────────
+function buildEvents() {
+  const ev = [];
+  if (shownTypes.has('wo')) (history.work_orders || []).forEach(w => ev.push({ type: 'wo', date: w.date_opened, d: w }));
+  if (shownTypes.has('defect')) (history.defects || []).forEach(d => ev.push({ type: 'defect', date: d.reported_at, d }));
+  if (shownTypes.has('service')) (history.service_records || []).forEach(s => ev.push({ type: 'service', date: s.completed_date, d: s }));
+  if (shownTypes.has('historical')) (history.historical_defects || []).forEach(h => ev.push({ type: 'historical', date: h.inspection_date, d: h }));
+  if (shownTypes.has('inspection')) (history.inspections || []).forEach(i => ev.push({ type: 'inspection', date: i.date_inspected, d: i }));
+  ev.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  return ev;
+}
+
+function renderTimeline() {
+  const c = document.getElementById('content');
+  const wos = history.work_orders || [], defs = history.defects || [], srs = history.service_records || [];
+  const totalCost = wos.reduce((s, w) => s + (parseFloat(w.total_cost || w.total_parts_cost) || 0), 0)
+                  + srs.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+  const openDefs = defs.filter(d => d.status === 'open').length;
+  const stats = `
+    <div class="stat-row">
+      <div class="stat wo"><div class="stat-n">${wos.length}</div><div class="stat-l">Work Orders</div></div>
+      <div class="stat def"><div class="stat-n">${defs.length}${openDefs ? ` <span style="font-size:14px;color:var(--red)">(${openDefs} open)</span>` : ''}</div><div class="stat-l">Defects</div></div>
+      <div class="stat svc"><div class="stat-n">${srs.length}</div><div class="stat-l">Service Records</div></div>
+      <div class="stat cost"><div class="stat-n">$${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div><div class="stat-l">Lifetime Recorded Cost</div></div>
+    </div>`;
+
+  let media = '';
+  if (shownTypes.has('media')) {
+    const photos = history.asset_photos || [];
+    const docs = history.documents || [];
+    media = `
+      <div class="tl-group">
+        <div class="tl-year">Photos &amp; Documents</div>
+        ${photos.length ? `<div class="photo-grid" id="assetPhotoGrid">${photos.map((p, i) => `<div class="photo-thumb" id="ap-${i}"><div class="photo-loading">…</div></div>`).join('')}</div>` : '<div class="empty" style="padding:12px"><p>No standalone photos.</p></div>'}
+        ${docs.map(d => `<div class="tl-card t-historical" style="margin-top:8px"><div class="tl-head"><span class="tl-type tt-historical">Document</span><span class="tl-date">${fmtDate(d.document_date)}</span></div><div class="tl-title">${esc(d.description || 'Document')}</div>${d.notes ? `<div class="tl-notes">${esc(d.notes)}</div>` : ''}<div class="tl-meta"><a href="#" class="sr-open doc-open" data-path="${esc(d.path || '')}">open</a></div></div>`).join('')}
+      </div>`;
+  }
+
+  const events = buildEvents();
+  if (!events.length && !media) {
+    c.innerHTML = stats + '<div class="empty"><div class="empty-icon">∅</div><p>No history on record for the selected types.</p></div>';
+    return;
+  }
+
+  // Group by year
+  const groups = new Map();
+  events.forEach(e => {
+    const y = (String(e.date || '').slice(0, 4)) || 'Undated';
+    if (!groups.has(y)) groups.set(y, []);
+    groups.get(y).push(e);
+  });
+  let html = stats + media;
+  for (const [year, list] of groups) {
+    html += `<div class="tl-group"><div class="tl-year">${esc(year)}</div>${list.map(renderEvent).join('')}</div>`;
+  }
+  c.innerHTML = html;
+  hydratePhotos(c);
+  bindDocLinks(c);
+}
+
+function renderEvent(e) {
+  const d = e.d;
+  if (e.type === 'wo') {
+    const tags = [];
+    if (d.mechanic) tags.push(`<span class="tl-tag tag-mech">${esc(d.mechanic)}</span>`);
+    if (d.total_cost || d.total_parts_cost) tags.push(`<span class="tl-tag tag-cost">$${(parseFloat(d.total_cost || d.total_parts_cost)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>`);
+    if (d.mileage_at_service) tags.push(`<span class="tl-tag tag-meter">${Number(d.mileage_at_service).toLocaleString()} mi</span>`);
+    if (d.engine_hours_at_service) tags.push(`<span class="tl-tag tag-meter">${Number(d.engine_hours_at_service).toLocaleString()} hrs</span>`);
+    if (d.mechanic_certification) tags.push(`<span class="tl-tag tag-cert">§396.11 ${d.mechanic_certification === 'repaired' ? 'Repaired' : 'No Repair Needed'}</span>`);
+    return `<div class="tl-card t-wo" data-ev="wo" data-id="${esc(d.id)}">
+      <div class="tl-head"><span class="tl-type tt-wo">Work Order</span>${d.work_order_number ? `<span class="tl-tag tag-meter">${esc(d.work_order_number)}</span>` : ''}<span class="st st-${esc(d.status || 'open')}">${esc((d.status || '').replace('_', ' '))}</span><span class="tl-date">${fmtDate(d.date_opened)}${d.date_completed ? ' → ' + fmtDate(d.date_completed) : ''}</span></div>
+      <div class="tl-title">${esc(d.description || '—')}</div>
+      <div class="tl-meta">${tags.join('')}</div>
+      ${d.notes ? `<div class="tl-notes">${esc(d.notes)}</div>` : ''}
+      ${photoGridHtml(d.photos)}
+    </div>`;
+  }
+  if (e.type === 'defect') {
+    return `<div class="tl-card t-defect" data-ev="defect" data-id="${esc(d.id)}">
+      <div class="tl-head"><span class="tl-type tt-defect">Defect</span>${d.severity ? `<span class="sev sev-${esc(d.severity)}">${esc(d.severity)}</span>` : ''}<span class="st st-${esc(d.status || 'open')}">${esc(d.status || '')}</span>${d.category ? `<span class="tl-tag tag-meter">${esc(d.category)}</span>` : ''}<span class="tl-date">${fmtDate(d.reported_at)}</span></div>
+      <div class="tl-title">${esc(d.description || '—')}</div>
+      <div class="tl-meta">${d.reported_by ? `<span class="tl-tag tag-meter">Reported by ${esc(d.reported_by)}</span>` : ''}${d.corrected_at ? `<span class="tl-tag tag-mech">Corrected ${fmtDate(d.corrected_at)}${d.corrected_by ? ' by ' + esc(d.corrected_by) : ''}</span>` : ''}</div>
+      ${d.correction_notes ? `<div class="tl-notes">Fix: ${esc(d.correction_notes)}</div>` : ''}
+      ${photoGridHtml(d.photos)}
+    </div>`;
+  }
+  if (e.type === 'service') {
+    const tags = [];
+    if (d.performed_by) tags.push(`<span class="tl-tag tag-mech">${esc(d.performed_by)}</span>`);
+    if (d.supplier) tags.push(`<span class="tl-tag tag-meter">${esc(d.supplier)}</span>`);
+    if (d.amount) tags.push(`<span class="tl-tag tag-cost">$${parseFloat(d.amount).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>`);
+    if (d.odometer) tags.push(`<span class="tl-tag tag-meter">${Number(d.odometer).toLocaleString()} mi</span>`);
+    if (d.engine_hours) tags.push(`<span class="tl-tag tag-meter">${Number(d.engine_hours).toLocaleString()} hrs</span>`);
+    return `<div class="tl-card t-service" data-ev="service" data-id="${esc(d.id)}">
+      <div class="tl-head"><span class="tl-type tt-service">Service</span><span class="tl-date">${fmtDate(d.completed_date)}</span></div>
+      <div class="tl-title">${esc(d.service_type || 'Service')}</div>
+      <div class="tl-meta">${tags.join('')}</div>
+      ${d.notes ? `<div class="tl-notes">${esc(d.notes)}</div>` : ''}
+    </div>`;
+  }
+  if (e.type === 'historical') {
+    return `<div class="tl-card t-historical" data-ev="historical" data-id="${esc(d.id)}">
+      <div class="tl-head"><span class="tl-type tt-historical">Historical Defect</span>${d.form_name ? `<span class="tl-tag tag-meter">${esc(d.form_name)}</span>` : ''}<span class="tl-date">${fmtDate(d.inspection_date)}</span></div>
+      <div class="tl-title">${esc(d.defect_details || (d.defect_count + ' defect(s) reported'))}</div>
+      <div class="tl-meta">${d.driver_name ? `<span class="tl-tag tag-meter">${esc(d.driver_name)}</span>` : ''}<span class="tl-tag tag-meter">${esc(d.source || 'import')}</span></div>
+    </div>`;
+  }
+  // inspection
+  return `<div class="tl-card t-inspection" data-ev="inspection" data-id="${esc(d.id)}">
+    <div class="tl-head"><span class="tl-type tt-inspection">Inspection</span><span class="st st-${esc(d.status || 'passed')}">${esc(d.status || '')}</span><span class="tl-date">${fmtDateTime(d.date_inspected)}</span></div>
+    <div class="tl-meta">${d.inspector ? `<span class="tl-tag tag-meter">${esc(d.inspector)}</span>` : ''}${d.form_name ? `<span class="tl-tag tag-meter">${esc(d.form_name)}</span>` : ''}</div>
+  </div>`;
+}
+
+function photoGridHtml(photos) {
+  if (!photos || !photos.length) return '';
+  return `<div class="photo-grid">${photos.map(p => `<div class="photo-thumb lazy-photo" data-path="${esc(p.path || '')}"><div class="photo-loading">…</div></div>`).join('')}</div>`;
+}
+
+function hydratePhotos(root) {
+  // Standalone asset photos (by index)
+  const ap = history.asset_photos || [];
+  ap.forEach(async (p, i) => {
+    const el = root.querySelector(`#ap-${i}`);
+    if (!el) return;
+    const url = await resolvePhoto(p.path);
+    el.innerHTML = url ? `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="Asset photo" loading="lazy"></a>` : '<div class="photo-loading">⚠</div>';
+  });
+  // Event photos
+  root.querySelectorAll('.lazy-photo').forEach(async el => {
+    const url = await resolvePhoto(el.dataset.path);
+    el.innerHTML = url ? `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="Photo" loading="lazy"></a>` : '<div class="photo-loading">⚠</div>';
+  });
+}
+
+function bindDocLinks(root) {
+  root.querySelectorAll('.doc-open').forEach(a => a.addEventListener('click', async ev => {
+    ev.preventDefault();
+    const url = await resolvePhoto(a.dataset.path);
+    if (url) window.open(url, '_blank', 'noopener');
+    else showToast('Could not open document');
+  }));
+}
+
+async function resolvePhoto(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path; // stored as a full URL
+  return signedUrl(path);
+}
+
+async function signedUrl(path) {
+  try {
+    const r = await fetch(`${SUPA}/storage/v1/object/sign/${BUCKET}/${path}`, {
+      method: 'POST',
+      headers: H,
+      body: JSON.stringify({ expiresIn: 3600 }),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data.signedURL ? `${SUPA}/storage/v1${data.signedURL}` : null;
+  } catch(e) { console.error('sign failed', e); return null; }
+}
+
+// ── Search ─────────────────────────────────────────────────────────
+function setMode(m) {
+  searchMode = m;
+  document.getElementById('modeThis').classList.toggle('on', m === 'this');
+  document.getElementById('modeSimilar').classList.toggle('on', m === 'similar');
+  runSearch();
+}
+
+async function runSearch() {
+  const q = document.getElementById('searchBox').value.trim();
+  const c = document.getElementById('content');
+  if (!q) { if (history) renderTimeline(); return; }
+  if (!history) return;
+  c.innerHTML = '<div class="empty"><div class="spinner"></div></div>';
+  try {
+    const res = searchMode === 'this'
+      ? await rpc('search_vehicle_history', { p_asset_id: assetId, p_query: q })
+      : await rpc('search_similar_history', { p_asset_id: assetId, p_query: q, p_year_window: 3 });
+    const results = (res && res.results) || [];
+    rpc('log_access', { p_tool_name: 'vehicle-history', p_user_name: currentUser, p_action: 'search', p_metadata: { asset_id: assetId, mode: searchMode, query: q, hits: results.length } });
+    if (!results.length) {
+      c.innerHTML = `<div class="empty"><div class="empty-icon">∅</div><p>No ${searchMode === 'this' ? 'history' : 'similar-vehicle history'} matches "${esc(q)}"</p></div>`;
+      return;
+    }
+    if (searchMode === 'this') renderSelfResults(results, q, c);
+    else renderSimilarResults(results, q, c);
+  } catch(e) {
+    console.error(e);
+    c.innerHTML = '<div class="empty"><div class="empty-icon">⚠</div><p>Search failed</p></div>';
+  }
+}
+
+const TYPE_LABEL = { work_order: 'Work Order', defect: 'Defect', service_record: 'Service', historical_defect: 'Historical Defect' };
+const TYPE_CLASS = { work_order: 'wo', defect: 'defect', service_record: 'service', historical_defect: 'historical' };
+
+function renderSelfResults(results, q, c) {
+  c.innerHTML = `<div class="sr-note">${results.length} match${results.length === 1 ? '' : 'es'} on this vehicle for "${esc(q)}" — click a result for full detail</div>` +
+    results.map((r, i) => `
+      <div class="sr-card t-${TYPE_CLASS[r.type] || 'historical'}" data-idx="${i}">
+        <div class="tl-head"><span class="tl-type tt-${TYPE_CLASS[r.type] || 'historical'}">${TYPE_LABEL[r.type] || r.type}</span>
+          ${r.status ? `<span class="st st-${esc(r.status)}">${esc(String(r.status).replace('_', ' '))}</span>` : ''}
+          ${r.extra ? `<span class="tl-tag tag-meter">${esc(r.extra)}</span>` : ''}
+          <span class="tl-date">${fmtDate(r.date)}</span></div>
+        <div class="sr-snippet">${hl(r.snippet)}</div>
+        <div class="sr-detail" id="srd-${i}"></div>
+      </div>`).join('');
+  c.querySelectorAll('.sr-card').forEach(card => card.addEventListener('click', () => {
+    const i = card.dataset.idx;
+    const r = results[i];
+    const det = document.getElementById('srd-' + i);
+    if (card.classList.contains('expanded')) { card.classList.remove('expanded'); return; }
+    det.innerHTML = fullRecordHtml(r);
+    card.classList.add('expanded');
+    hydratePhotos(det);
+  }));
+}
+
+// Pull the full record out of the already-loaded history payload
+function fullRecordHtml(r) {
+  const pools = { work_order: ['work_orders', 'wo'], defect: ['defects', 'defect'], service_record: ['service_records', 'service'], historical_defect: ['historical_defects', 'historical'] };
+  const p = pools[r.type];
+  if (!p) return '';
+  const rec = (history[p[0]] || []).find(x => x.id === r.id);
+  if (!rec) return '<div class="tl-notes">Full record not in loaded history.</div>';
+  return renderEvent({ type: p[1], d: rec });
+}
+
+function renderSimilarResults(results, q, c) {
+  const TIER_LABEL = { 0: 'Same model · similar vintage', 1: 'Same make · similar vintage', 2: 'Same group' };
+  c.innerHTML = `<div class="sr-note">${results.length} match${results.length === 1 ? '' : 'es'} across similar vehicles for "${esc(q)}"</div>` +
+    results.map(r => `
+      <div class="sr-card t-${TYPE_CLASS[r.type] || 'historical'}" data-open-asset="${esc(r.asset_id)}">
+        <div class="tl-head">
+          <span class="sr-asset">${esc(r.asset_number)}</span>
+          <span class="tl-tag tag-meter">${esc([r.year, r.make, r.model].filter(Boolean).join(' '))}</span>
+          <span class="tier tier-${r.tier}">${TIER_LABEL[r.tier] || ''}</span>
+          <span class="tl-type tt-${TYPE_CLASS[r.type] || 'historical'}">${TYPE_LABEL[r.type] || r.type}</span>
+          <span class="tl-date">${fmtDate(r.date)}</span>
+        </div>
+        <div class="sr-snippet">${hl(r.snippet)}</div>
+        <div class="tl-meta"><span class="sr-open">open this vehicle's history →</span></div>
+      </div>`).join('');
+  c.querySelectorAll('[data-open-asset]').forEach(card => card.addEventListener('click', () => {
+    const id = card.dataset.openAsset;
+    const url = `${location.pathname}?asset=${encodeURIComponent(id)}&q=${encodeURIComponent(q)}`;
+    window.open(url, '_blank', 'noopener');
+  }));
+}
+
+// ── Asset picker (no ?asset= param) ────────────────────────────────
+async function showPicker() {
+  document.getElementById('assetHead').style.display = 'none';
+  document.getElementById('toolbarEl').style.display = 'none';
+  const c = document.getElementById('content');
+  c.innerHTML = '<div class="empty"><div class="spinner"></div></div>';
+  if (!allAssets.length) {
+    try {
+      const r = await fetch(`${SUPA}/rest/v1/assets?select=id,asset_number,make,model,year,asset_subtype&deleted_at=is.null&order=asset_number`, { headers: H });
+      allAssets = await r.json();
+      if (!Array.isArray(allAssets)) allAssets = [];
+    } catch(e) { console.error(e); }
+  }
+  c.innerHTML = `
+    <div class="picker-wrap">
+      <div class="picker-title">Select a Vehicle</div>
+      <input class="tb-search" id="pickerSearch" style="width:100%" placeholder="Search asset number, make, model, year..." autocomplete="off">
+      <div class="picker-list" id="pickerList"></div>
+    </div>`;
+  const input = document.getElementById('pickerSearch');
+  input.addEventListener('input', () => renderPicker(input.value));
+  input.focus();
+  renderPicker('');
+}
+
+// Scored search: exact number → prefix → substring → make/model/year
+function renderPicker(query) {
+  const list = document.getElementById('pickerList');
+  const q = (query || '').trim().toLowerCase();
+  let matches;
+  if (!q) {
+    matches = allAssets.slice(0, 30);
+  } else {
+    const scored = [];
+    for (const a of allAssets) {
+      const num = String(a.asset_number || '').toLowerCase();
+      const desc = [a.make, a.model, a.year, a.asset_subtype].filter(Boolean).join(' ').toLowerCase();
+      let tier = null;
+      if (num === q) tier = 0;
+      else if (num.startsWith(q)) tier = 1;
+      else if (num.includes(q)) tier = 2;
+      else if (desc.includes(q)) tier = 3;
+      if (tier !== null) scored.push({ a, tier });
+    }
+    scored.sort((x, y) => x.tier - y.tier || String(x.a.asset_number).localeCompare(String(y.a.asset_number), undefined, { numeric: true }));
+    matches = scored.slice(0, 30).map(s => s.a);
+  }
+  if (!matches.length) { list.innerHTML = '<div class="empty" style="padding:16px"><p>No matching assets.</p></div>'; return; }
+  list.innerHTML = matches.map(a => `
+    <div class="picker-row" data-asset-id="${esc(a.id)}">
+      <span class="picker-num">${esc(a.asset_number)}</span>
+      <span class="picker-desc">${esc([a.year, a.make, a.model].filter(Boolean).join(' ')) || '—'}</span>
+    </div>`).join('');
+  list.querySelectorAll('.picker-row').forEach(row => row.addEventListener('click', () => {
+    assetId = row.dataset.assetId;
+    const u = new URL(location.href);
+    u.searchParams.set('asset', assetId);
+    u.searchParams.delete('q');
+    window.history.replaceState({}, '', u.toString());
+    document.getElementById('searchBox').value = '';
+    loadHistory();
+  }));
+}
+
+// ── Utils ──────────────────────────────────────────────────────────
+function showSpinner() { document.getElementById('content').innerHTML = '<div class="empty"><div class="spinner"></div></div>'; }
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const s = String(d).slice(0, 10);
+  return new Date(s + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function fmtDateTime(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+// Escape a ts_headline snippet, then restore only its <b> highlight tags.
+function hl(s) {
+  return esc(s).replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>

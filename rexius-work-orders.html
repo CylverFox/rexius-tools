@@ -982,6 +982,20 @@ function openDetail(id) {
       <div class="modal-section"><div class="modal-label">Parts Cost Est.</div><div class="modal-value">${cost}</div></div>
     </div>
 
+    ${w.asset_status ? `
+    <div class="modal-section" style="margin-top:14px;background:${w.asset_status === 'out_of_service' ? 'var(--red-light)' : 'var(--surface)'};padding:12px;border-left:3px solid ${w.asset_status === 'out_of_service' ? 'var(--red)' : 'var(--green)'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div>
+          <div class="modal-label" style="margin-bottom:4px">Vehicle Status</div>
+          <div class="modal-value">
+            <span class="st ${w.asset_status === 'out_of_service' ? 'st-open' : 'st-completed'}">${w.asset_status === 'out_of_service' ? 'Out of Service' : w.asset_status === 'retired' ? 'Retired' : 'In Service'}</span>
+            ${w.asset_status === 'out_of_service' && w.out_of_service_since ? `<span style="font-family:var(--mono);font-size:11px;color:var(--gray);margin-left:8px">since ${fmtDateTime(w.out_of_service_since)}</span>` : ''}
+          </div>
+        </div>
+        ${(readOnly || w.asset_status === 'retired') ? '' : `<button class="m-btn ${w.asset_status === 'out_of_service' ? 'primary' : 'danger'}" id="vehStatusBtn">${w.asset_status === 'out_of_service' ? 'Return to Service' : 'Take Out of Service'}</button>`}
+      </div>
+    </div>` : ''}
+
     ${(w.operator_phone || w.supervisor) ? `
     <div class="modal-section" style="margin-top:14px;background:var(--surface);padding:12px;border-left:3px solid var(--green)">
       <div class="modal-label">Follow-up Contacts</div>
@@ -1178,6 +1192,10 @@ function openDetail(id) {
     });
   };
 
+  // Vehicle status toggle (present only when portal data carries asset_status)
+  const vsb = document.getElementById('vehStatusBtn');
+  if (vsb) vsb.addEventListener('click', () => toggleVehicleStatus());
+
   // Vehicle History: opens the history tool for this WO's asset in a new tab.
   const vhb = document.getElementById('detailHistoryBtn');
   const vhAssetId = w.asset_id || allAssets.find(a => a.asset_number === w.asset_number)?.id;
@@ -1299,6 +1317,25 @@ async function addUpdate() {
     openDetail(woId);
   } else {
     showToast('Failed to add update: ' + JSON.stringify(result));
+  }
+}
+
+// Flip the WO's vehicle between in_service and out_of_service.
+// The RPC also writes a Status-type work order update, so the change shows in the Updates thread.
+async function toggleVehicleStatus() {
+  if (!selectedWO) return;
+  const goingOut = selectedWO.asset_status !== 'out_of_service';
+  if (goingOut && !confirm(`Take ${selectedWO.asset_number} out of service? Drivers will see this at pre-trip inspection.`)) return;
+  const woId = selectedWO.id;
+  const result = await rpc('toggle_asset_service_status', { p_wo_id: woId, p_user: currentUser });
+  if (result?.success) {
+    showToast(result.status === 'out_of_service' ? 'Vehicle taken out of service' : 'Vehicle returned to service');
+    rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'vehicle_status_toggle', p_metadata: { wo_id: woId, asset: selectedWO.asset_number, status: result.status } });
+    // Refresh data, then reopen this WO so the new status + update are visible immediately
+    await loadData(true);
+    openDetail(woId);
+  } else {
+    showToast(result?.error || 'Status change failed');
   }
 }
 

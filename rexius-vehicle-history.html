@@ -1,11 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.supabase.co; connect-src https://toduddkyttuablausist.supabase.co https://*.supabase.co; img-src 'self' blob: data: https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'">
-<title>Rexius Fleet — Vehicle History</title>
+<title>Rexius Fleet — Work Orders</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@300;400;500;600&display=swap');
@@ -59,115 +58,176 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
 .topbar-right { display: flex; align-items: center; gap: 12px; }
 .topbar-user { font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,.4); }
 .topbar-user span { color: var(--green); }
-.logout-btn { font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,.35); background: none; border: 1px solid rgba(255,255,255,.12); padding: 4px 9px; cursor: pointer; transition: all .12s; text-decoration: none; display: inline-block; }
+.logout-btn { font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,.35); background: none; border: 1px solid rgba(255,255,255,.12); padding: 4px 9px; cursor: pointer; transition: all .12s; }
 .logout-btn:hover { border-color: var(--green); color: var(--green); }
 
-/* Asset header */
-.asset-head { background: var(--paper); border-bottom: 1px solid var(--border); padding: 18px 20px; display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
-.asset-num { font-family: var(--display); font-size: 38px; font-weight: 700; line-height: 1; }
-.asset-sub { font-size: 14px; color: #444; margin-top: 4px; }
-.asset-badges { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
-.asset-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, auto)); gap: 6px 26px; margin-left: auto; }
-.fact-l { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--gray); }
-.fact-v { font-family: var(--mono); font-size: 13px; color: var(--ink); margin-top: 1px; }
-.driver-notice { width: 100%; background: var(--amber-light); border-left: 3px solid var(--amber); padding: 8px 12px; font-size: 13px; color: var(--amber); }
+.tab-bar { background: var(--paper); border-bottom: 1px solid var(--border); padding: 0 20px; display: flex; gap: 0; align-items: flex-end; }
+.tab { font-family: var(--display); font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 12px 18px; cursor: pointer; color: var(--gray); border-bottom: 2px solid transparent; transition: all .12s; white-space: nowrap; }
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--green); border-bottom-color: var(--green); }
+.tab-badge { display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 10px; background: var(--surface); color: var(--gray); margin-left: 5px; }
+.tab.active .tab-badge { background: var(--green-light); color: var(--green); }
 
-.badge { font-family: var(--mono); font-size: 10px; font-weight: 600; padding: 3px 8px; letter-spacing: .04em; text-transform: uppercase; }
-.badge-cdl { background: #1e3a5f; color: #fff; }
-.badge-active { background: var(--green-light); color: var(--green); }
-.badge-inactive { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
-.badge-dept { background: var(--blue-light); color: var(--blue); }
-
-.toolbar { padding: 12px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--paper); border-bottom: 1px solid var(--border); position: sticky; top: 50px; z-index: 90; }
-.tb-search { font-family: var(--body); font-size: 13px; padding: 7px 11px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); outline: none; width: 280px; }
+.toolbar { padding: 12px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--paper); border-bottom: 1px solid var(--border); }
+.tb-search { font-family: var(--body); font-size: 13px; padding: 7px 11px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); outline: none; width: 220px; }
 .tb-search:focus { border-color: var(--green); background: var(--paper); }
+.tb-select { font-family: var(--body); font-size: 13px; padding: 7px 11px; border: 1px solid var(--border); background: var(--paper); color: var(--ink); outline: none; cursor: pointer; }
+.tb-select:focus { border-color: var(--green); }
 .tb-sep { width: 1px; height: 22px; background: var(--border); }
 .tb-btn { font-family: var(--mono); font-size: 11px; font-weight: 500; padding: 7px 14px; border: 1px solid var(--border); background: var(--paper); color: #444; cursor: pointer; transition: all .12s; white-space: nowrap; letter-spacing: .02em; }
 .tb-btn:hover { border-color: var(--green); color: var(--green); }
 .tb-btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
-.mode-btn.on { background: var(--ink); border-color: var(--ink); color: #fff; }
-.chip { font-family: var(--mono); font-size: 10px; font-weight: 500; padding: 5px 10px; border: 1px solid var(--border); background: var(--paper); color: var(--gray); cursor: pointer; letter-spacing: .03em; text-transform: uppercase; transition: all .12s; }
-.chip.on { background: var(--green-light); border-color: var(--green); color: var(--green); }
+.tb-btn.primary:hover { opacity: .88; }
 
-.content { flex: 1; padding: 20px; overflow-y: auto; max-width: 1000px; width: 100%; margin: 0 auto; }
+.content { flex: 1; padding: 20px; overflow-y: auto; }
 
 .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.stat-row:empty { display: none; margin: 0; }
 .stat { background: var(--paper); border: 1px solid var(--border); padding: 14px 16px; position: relative; }
 .stat::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--border); }
-.stat.wo::before { background: var(--green); }
-.stat.def::before { background: var(--red); }
-.stat.svc::before { background: var(--blue); }
-.stat.cost::before { background: var(--amber); }
+.stat.urgent::before { background: var(--red); }
+.stat.high::before { background: #ea580c; }
+.stat.normal::before { background: var(--amber); }
+.stat.low::before { background: var(--blue); }
+.stat.done::before { background: var(--green); }
 .stat-n { font-family: var(--display); font-size: 32px; font-weight: 700; line-height: 1; }
 .stat-l { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--gray); margin-top: 3px; }
 
-/* Timeline */
-.tl-group { margin-bottom: 22px; }
-.tl-year { font-family: var(--display); font-size: 20px; font-weight: 700; letter-spacing: .04em; color: var(--ink); border-bottom: 2px solid var(--ink); padding-bottom: 4px; margin-bottom: 10px; }
-.tl-card { background: var(--paper); border: 1px solid var(--border); border-left: 3px solid var(--border); padding: 11px 13px; margin-bottom: 8px; }
-.tl-card.t-wo { border-left-color: var(--green); }
-.tl-card.t-defect { border-left-color: var(--red); }
-.tl-card.t-service { border-left-color: var(--blue); }
-.tl-card.t-historical { border-left-color: var(--gray); }
-.tl-card.t-inspection { border-left-color: var(--amber); }
-.tl-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.tl-type { font-family: var(--mono); font-size: 9px; font-weight: 700; padding: 2px 7px; letter-spacing: .06em; text-transform: uppercase; }
-.tt-wo { background: var(--green-light); color: var(--green); }
-.tt-defect { background: var(--red-light); color: var(--red); }
-.tt-service { background: var(--blue-light); color: var(--blue); }
-.tt-historical { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
-.tt-inspection { background: var(--amber-light); color: var(--amber); }
-.tl-date { font-family: var(--mono); font-size: 11px; color: var(--gray); margin-left: auto; white-space: nowrap; }
-.tl-title { font-size: 14px; color: var(--ink); margin-top: 5px; line-height: 1.35; }
-.tl-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
-.tl-tag { font-family: var(--mono); font-size: 10px; font-weight: 500; padding: 2px 6px; letter-spacing: .03em; }
+/* Stat visibility toggle panel */
+.stat-toggle-wrap { position: relative; }
+.stat-toggle-panel { position: absolute; top: 100%; right: 0; margin-top: 6px; background: var(--paper); border: 1px solid var(--border); box-shadow: 0 4px 14px rgba(0,0,0,.12); padding: 8px; z-index: 200; min-width: 180px; display: none; }
+.stat-toggle-panel.open { display: block; }
+.stat-toggle-panel .stp-title { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--gray); padding: 4px 6px 8px; }
+.stp-item { display: flex; align-items: center; gap: 8px; padding: 6px; font-size: 13px; cursor: pointer; user-select: none; }
+.stp-item:hover { background: var(--surface); }
+.stp-item input { cursor: pointer; }
+
+.kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.lane { background: var(--surface); border: 1px solid var(--border); }
+.lane-header { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--paper); }
+.lane-title { font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+.lane-count { font-family: var(--mono); font-size: 11px; color: var(--gray); }
+.lane-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
+.lane-body.scrollable { max-height: 70vh; overflow-y: auto; }
+
+.wo-card { background: var(--paper); border: 1px solid var(--border); border-left: 3px solid var(--border); padding: 11px 13px; cursor: pointer; transition: all .12s; position: relative; }
+.wo-card:hover { border-color: var(--green); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.wo-card.urgent { border-left-color: var(--red); }
+.wo-card.high { border-left-color: #ea580c; }
+.wo-card.normal { border-left-color: var(--amber); }
+.wo-card.low { border-left-color: var(--blue); }
+.wo-asset { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--ink); }
+.wo-desc { font-size: 13px; color: #333; margin-top: 3px; line-height: 1.3; }
+.wo-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+.wo-tag { font-family: var(--mono); font-size: 10px; font-weight: 500; padding: 2px 6px; letter-spacing: .03em; }
+.tag-team { background: var(--blue-light); color: var(--blue); }
+.tag-shop { background: var(--green-light); color: var(--green-mid); }
 .tag-mech { background: var(--green-light); color: var(--green); }
+.tag-unassigned { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
 .tag-cost { background: var(--amber-light); color: var(--amber); }
-.tag-meter { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
-.tag-cert { background: var(--blue-light); color: var(--blue); }
-.tl-notes { font-size: 12px; color: #555; margin-top: 6px; line-height: 1.5; background: var(--surface); padding: 7px 10px; border-left: 2px solid var(--border); white-space: pre-wrap; }
+.wo-date { font-family: var(--mono); font-size: 10px; color: var(--gray); margin-left: auto; }
+
+.wo-table { width: 100%; border-collapse: collapse; background: var(--paper); border: 1px solid var(--border); font-size: 13px; }
+.wo-table th { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--gray); background: var(--surface); padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+.wo-table th:hover { color: var(--ink); }
+.wo-table td { padding: 10px 12px; border-bottom: 1px solid var(--surface); vertical-align: middle; }
+.wo-table tr:last-child td { border-bottom: none; }
+.wo-table tr:hover td { background: var(--surface); }
+.wo-table tr { cursor: pointer; }
+
+.pri { font-family: var(--mono); font-size: 10px; font-weight: 600; padding: 3px 8px; letter-spacing: .04em; text-transform: uppercase; }
+.pri-urgent { background: var(--red-light); color: var(--red); }
+.pri-high { background: var(--orange-light); color: var(--orange); }
+.pri-normal { background: var(--amber-light); color: var(--amber); }
+.pri-low { background: var(--blue-light); color: var(--blue); }
+.pri-null { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
+
 .st { font-family: var(--mono); font-size: 10px; font-weight: 600; padding: 3px 8px; letter-spacing: .04em; text-transform: uppercase; }
 .st-open { background: var(--red-light); color: var(--red); }
 .st-in_progress { background: var(--amber-light); color: var(--amber); }
-.st-completed, .st-corrected, .st-passed { background: var(--green-light); color: var(--green); }
+.st-completed { background: var(--green-light); color: var(--green); }
 .st-cancelled { background: var(--surface); color: var(--gray); }
-.st-failed { background: var(--red-light); color: var(--red); }
-.sev { font-family: var(--mono); font-size: 10px; font-weight: 700; padding: 2px 7px; text-transform: uppercase; }
-.sev-critical, .sev-major { background: var(--red-light); color: var(--red); }
-.sev-minor { background: var(--amber-light); color: var(--amber); }
 
-.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 8px; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; display: none; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--paper); width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--border); }
+.modal-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; background: var(--ink); color: var(--paper); }
+.modal-title { font-family: var(--display); font-size: 18px; font-weight: 700; letter-spacing: .02em; }
+.modal-asset { font-family: var(--mono); font-size: 12px; color: var(--green); margin-top: 2px; }
+.modal-close { font-size: 20px; background: none; border: none; color: rgba(255,255,255,.4); cursor: pointer; padding: 0 4px; line-height: 1; }
+.modal-close:hover { color: var(--paper); }
+.modal-body { padding: 20px; }
+.modal-section { margin-bottom: 16px; }
+.modal-label { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--gray); margin-bottom: 5px; }
+.modal-value { font-size: 14px; color: var(--ink); line-height: 1.5; }
+.modal-notes { font-size: 13px; color: #444; line-height: 1.6; background: var(--surface); padding: 10px 12px; border-left: 3px solid var(--green); white-space: pre-wrap; }
+.assign-history { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto; }
+.assign-row { display: flex; align-items: baseline; gap: 8px; font-size: 12px; padding: 6px 10px; background: var(--surface); border-left: 2px solid var(--border); }
+.assign-row:first-child { border-left-color: var(--green); }
+.assign-mech { font-weight: 600; color: var(--ink); }
+.assign-by { color: var(--gray); font-family: var(--mono); font-size: 11px; }
+.assign-at { margin-left: auto; color: var(--gray); font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+.assign-empty { font-size: 12px; color: var(--gray); padding: 6px 0; }
+
+.upd-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; margin-top: 8px; }
+.upd-row { background: var(--surface); border-left: 2px solid var(--border); padding: 8px 10px; }
+.upd-head { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.upd-by { font-family: var(--mono); font-size: 11px; color: var(--gray); }
+.upd-at { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--gray); white-space: nowrap; }
+.upd-text { font-size: 13px; color: #333; line-height: 1.4; white-space: pre-wrap; }
+.upd-type { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 6px; }
+.upd-type-note     { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
+.upd-type-status   { background: var(--blue-light); color: var(--blue); }
+.upd-type-parts    { background: var(--amber-light); color: var(--amber); }
+.upd-type-customer { background: var(--green-light); color: var(--green); }
+.upd-type-other    { background: var(--surface); color: var(--ink); border: 1px solid var(--border); }
+
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 10px; }
 .photo-thumb { aspect-ratio: 1; background: var(--surface); border: 1px solid var(--border); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+.photo-remove { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,.65); color: #fff; border: none; font-size: 14px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 2; }
+.photo-remove:hover { background: var(--red); }
 .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .photo-loading { font-family: var(--mono); font-size: 16px; color: var(--gray); }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; background: var(--surface); }
+.m-btn { font-family: var(--mono); font-size: 11px; font-weight: 500; padding: 8px 16px; border: 1px solid var(--border); background: var(--paper); color: #444; cursor: pointer; transition: all .12s; }
+.m-btn:hover { border-color: var(--green); color: var(--green); }
+.m-btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+.m-btn.danger { border-color: var(--red); color: var(--red); }
+.m-btn.danger:hover { background: var(--red); color: #fff; }
 
-/* Search results */
-.sr-note { font-family: var(--mono); font-size: 11px; color: var(--gray); margin-bottom: 12px; }
-.sr-card { background: var(--paper); border: 1px solid var(--border); border-left: 3px solid var(--border); padding: 11px 13px; margin-bottom: 8px; cursor: pointer; transition: all .12s; }
-.sr-card:hover { border-color: var(--green); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-.sr-card.t-wo { border-left-color: var(--green); }
-.sr-card.t-defect { border-left-color: var(--red); }
-.sr-card.t-service { border-left-color: var(--blue); }
-.sr-card.t-historical { border-left-color: var(--gray); }
-.sr-snippet { font-size: 13px; color: #333; margin-top: 5px; line-height: 1.45; }
-.sr-snippet b { background: #fef3c0; color: var(--ink); font-weight: 600; padding: 0 1px; }
-.sr-asset { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--ink); background: var(--surface); border: 1px solid var(--border); padding: 2px 7px; }
-.tier { font-family: var(--mono); font-size: 9px; font-weight: 600; padding: 2px 7px; letter-spacing: .05em; text-transform: uppercase; }
-.tier-0 { background: var(--green-light); color: var(--green); }
-.tier-1 { background: var(--blue-light); color: var(--blue); }
-.tier-2 { background: var(--surface); color: var(--gray); border: 1px solid var(--border); }
-.sr-open { font-family: var(--mono); font-size: 10px; color: var(--green); text-decoration: underline; margin-left: auto; white-space: nowrap; }
-.sr-detail { display: none; margin-top: 8px; }
-.sr-card.expanded .sr-detail { display: block; }
+.form-row { margin-bottom: 14px; }
+.form-label { display: block; font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--gray); margin-bottom: 5px; }
+.form-input, .form-select, .form-textarea { width: 100%; font-family: var(--body); font-size: 14px; padding: 9px 11px; border: 1px solid var(--border); background: var(--paper); color: var(--ink); outline: none; transition: border-color .15s; }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--green); }
+.form-textarea { resize: vertical; min-height: 80px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-/* Asset picker */
-.picker-wrap { max-width: 640px; margin: 40px auto; }
-.picker-title { font-family: var(--display); font-size: 26px; font-weight: 700; margin-bottom: 12px; }
-.picker-list { margin-top: 10px; }
-.picker-row { background: var(--paper); border: 1px solid var(--border); padding: 10px 14px; margin-bottom: 6px; cursor: pointer; display: flex; gap: 12px; align-items: baseline; transition: all .12s; }
-.picker-row:hover { border-color: var(--green); }
-.picker-num { font-family: var(--mono); font-size: 13px; font-weight: 600; }
-.picker-desc { font-size: 13px; color: #555; }
+.exp-row { padding: 8px 10px; border: 1px solid var(--border); border-left: 3px solid var(--green); background: var(--surface); margin-bottom: 6px; }
+.exp-main { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.exp-amt { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--ink); }
+.exp-vendor { font-size: 13px; color: #444; }
+.exp-part { font-family: var(--mono); font-size: 11px; color: var(--green); background: var(--green-light, #e8f5ee); padding: 1px 6px; }
+.exp-labor { font-family: var(--mono); font-size: 11px; color: var(--blue); background: var(--blue-light, #e8f0fa); padding: 1px 6px; }
+.exp-note { font-size: 12px; color: #555; margin-top: 3px; line-height: 1.4; }
+.exp-meta { display: flex; gap: 12px; align-items: center; margin-top: 5px; font-family: var(--mono); font-size: 10px; color: var(--gray); }
+.exp-meta span { flex: 1; }
+.exp-receipt { font-family: var(--mono); font-size: 10px; text-decoration: underline; cursor: pointer; }
+.exp-void { font-family: var(--mono); font-size: 10px; background: none; border: none; color: var(--red); cursor: pointer; text-transform: uppercase; padding: 0; }
+.exp-void:hover { text-decoration: underline; }
+.exp-receipt-remove { font-family: var(--mono); font-size: 11px; background: none; border: none; color: var(--red); cursor: pointer; padding: 0 0 0 2px; }
+.exp-receipt-remove:hover { text-decoration: underline; }
+
+.insp-item { padding: 8px 10px; border: 1px solid var(--border); margin-bottom: 5px; }
+.insp-item-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.insp-item-title { font-size: 13px; color: var(--ink); }
+.insp-pf { font-family: var(--mono); font-size: 10px; font-weight: 700; padding: 2px 8px; letter-spacing: .05em; }
+.insp-pass { background: var(--green-light, #e8f5ee); color: var(--green); }
+.insp-fail { background: var(--red-light, #fdecec); color: var(--red); }
+.insp-na { color: var(--gray); }
+.insp-val { font-family: var(--mono); font-size: 11px; color: #444; }
+.insp-item-notes { font-size: 12px; color: #555; margin-top: 4px; line-height: 1.4; }
+.insp-photos { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 
 .empty { text-align: center; padding: 40px 20px; color: var(--gray); }
 .empty-icon { font-size: 32px; opacity: .3; margin-bottom: 8px; }
@@ -175,6 +235,7 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
 
 .toast { position: fixed; bottom: 20px; right: 20px; background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: 12px; padding: 10px 16px; border-left: 3px solid var(--green); opacity: 0; transform: translateY(6px); transition: all .2s; z-index: 9999; pointer-events: none; }
 .toast.show { opacity: 1; transform: none; }
+
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin .6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -185,14 +246,14 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
 <div id="loginScreen">
   <div class="login-box">
     <div class="login-wordmark">Rexius Forest By-Products</div>
-    <div class="login-title">Vehicle History</div>
-    <div class="login-sub">Full repair &amp; inspection history — mechanics &amp; managers</div>
+    <div class="login-title">Work Orders</div>
+    <div class="login-sub">Shop planning — mechanics &amp; managers</div>
     <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
     <label class="login-label">Email</label>
     <input class="login-input" id="loginEmail" type="email" placeholder="you@rexius.com" autocomplete="username">
     <label class="login-label">Password</label>
     <input class="login-input" id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password">
-    <button class="login-btn" id="loginBtn">Enter</button>
+    <button class="login-btn" id="loginBtn">Enter Shop</button>
     <div class="login-err" id="loginErr">Incorrect email or password.</div>
   </div>
 </div>
@@ -202,34 +263,209 @@ body { font-family: var(--body); background: var(--surface); color: var(--ink); 
   <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-brand">Rexius Fleet</div>
-      <div class="topbar-title">Vehicle History</div>
+      <div class="topbar-title">Work Orders</div>
     </div>
     <div class="topbar-right">
-      <a class="logout-btn" href="rexius-work-orders.html">Work Orders</a>
-      <button class="logout-btn" id="changeAssetBtn">Change Vehicle</button>
+      <a class="logout-btn" id="notifLink" href="rexius-notifications.html" style="text-decoration:none">Notifications</a>
       <div class="topbar-user">Signed in as <span id="topUser">—</span></div>
       <button class="logout-btn" id="logoutBtn">Sign out</button>
     </div>
   </div>
 
-  <div id="assetHead" class="asset-head" style="display:none"></div>
+  <div class="tab-bar">
+    <div class="tab active" id="tab-board" data-tab="board">Board <span class="tab-badge" id="badge-board">0</span></div>
+    <div class="tab" id="tab-list" data-tab="list">All Work Orders <span class="tab-badge" id="badge-list">0</span></div>
+    <div class="tab" id="tab-week" data-tab="week">This Week <span class="tab-badge" id="badge-week">0</span></div>
+  </div>
 
-  <div class="toolbar" id="toolbarEl" style="display:none">
-    <input class="tb-search" id="searchBox" placeholder="Search history — e.g. fuel injection, brake, coolant leak...">
-    <button class="tb-btn mode-btn on" id="modeThis">This Vehicle</button>
-    <button class="tb-btn mode-btn" id="modeSimilar">Similar Vehicles</button>
+  <div class="toolbar">
+    <input class="tb-search" id="searchBox" placeholder="Search asset, description...">
+    <select class="tb-select" id="filterPri">
+      <option value="all">All priorities</option>
+      <option value="urgent">Urgent</option>
+      <option value="high">High</option>
+      <option value="normal">Normal</option>
+      <option value="low">Low</option>
+    </select>
+    <select class="tb-select" id="filterRegion">
+      <option value="all">All regions</option>
+    </select>
+    <select class="tb-select" id="filterShop">
+      <option value="all">All shops</option>
+    </select>
+    <select class="tb-select" id="filterMech">
+      <option value="all">All mechanics</option>
+      <option value="unassigned">Unassigned</option>
+    </select>
     <div class="tb-sep"></div>
-    <span style="font-family:var(--mono);font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.06em">Show:</span>
-    <button class="chip on" data-type="wo">Work Orders</button>
-    <button class="chip on" data-type="defect">Defects</button>
-    <button class="chip on" data-type="service">Service</button>
-    <button class="chip on" data-type="historical">Historical</button>
-    <button class="chip" data-type="inspection">Inspections</button>
-    <button class="chip" data-type="media">Photos &amp; Docs</button>
+    <div class="stat-toggle-wrap">
+      <button class="tb-btn" id="statToggleBtn" title="Show/hide summary tiles">▣ Tiles</button>
+      <div class="stat-toggle-panel" id="statTogglePanel">
+        <div class="stp-title">Show summary tiles</div>
+        <label class="stp-item"><input type="checkbox" data-stat="urgent"> Urgent</label>
+        <label class="stp-item"><input type="checkbox" data-stat="high"> High Priority</label>
+        <label class="stp-item"><input type="checkbox" data-stat="open"> Open</label>
+        <label class="stp-item"><input type="checkbox" data-stat="inprog"> In Progress</label>
+        <label class="stp-item"><input type="checkbox" data-stat="unass"> Unassigned</label>
+      </div>
+    </div>
+    <button class="tb-btn" id="archiveToggleBtn">Previous Work Orders</button>
+    <button class="tb-btn primary" id="newWOBtn">+ New Work Order</button>
   </div>
 
   <div class="content" id="content">
     <div class="empty"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- WO DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="detailTitle">—</div>
+        <div class="modal-asset" id="detailAsset">—</div>
+      </div>
+      <button class="modal-close" data-close="detailModal">×</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer">
+      <button class="m-btn" id="detailHistoryBtn" style="margin-right:auto">Vehicle History</button>
+      <button class="m-btn danger" id="detailCancelBtn">Cancel WO</button>
+      <button class="m-btn" data-close="detailModal">Close</button>
+      <button class="m-btn primary" id="detailFollowUpBtn" style="display:none">Create Follow-up Work Order</button>
+      <button class="m-btn primary" id="detailProgressBtn">Mark In Progress</button>
+    </div>
+  </div>
+</div>
+
+<!-- INSPECTION DETAIL MODAL -->
+<div class="modal-overlay" id="inspModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="inspTitle">Inspection</div>
+        <div class="modal-asset" id="inspAsset">—</div>
+      </div>
+      <button class="modal-close" data-close="inspModal">×</button>
+    </div>
+    <div class="modal-body" id="inspBody"></div>
+    <div class="modal-footer">
+      <button class="m-btn" data-close="inspModal">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW WO MODAL -->
+<div class="modal-overlay" id="newWOModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div><div class="modal-title">New Work Order</div></div>
+      <button class="modal-close" data-close="newWOModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="woFollowUpBanner" style="display:none;background:var(--surface);border-left:3px solid var(--blue);padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--ink)"></div>
+      <div class="form-row">
+        <label class="form-label">Asset *</label>
+        <div style="position:relative">
+          <input class="form-input" id="woAssetSearch" placeholder="Search asset number, make, model..." autocomplete="off">
+          <div id="assetDropdown" style="position:absolute;top:100%;left:0;right:0;background:var(--paper);border:1px solid var(--border);max-height:200px;overflow-y:auto;z-index:999;display:none"></div>
+        </div>
+        <input type="hidden" id="woAssetId">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Description *</label>
+        <input class="form-input" id="woDesc" placeholder="e.g. Brake inspection + rotor replacement">
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Priority</label>
+          <select class="form-select" id="woPriority">
+            <option value="normal">Normal</option>
+            <option value="low">Low</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Assign To</label>
+          <select class="form-select" id="woMechanic">
+            <option value="">Unassigned</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Shop</label>
+          <select class="form-select" id="woShop">
+            <option value="">Unassigned</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Date Opened</label>
+          <input class="form-input" type="date" id="woDate">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Est. Parts Cost ($)</label>
+          <input class="form-input" type="number" id="woCost" placeholder="0.00">
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="woNotes" placeholder="Parts needed, vendor, ETA, special instructions..."></textarea>
+      </div>
+      <div id="woError" style="font-size:12px;color:var(--red);margin-top:4px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="m-btn" data-close="newWOModal">Cancel</button>
+      <button class="m-btn primary" id="saveNewWOBtn">Create Work Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- CDL CERTIFICATION MODAL -->
+<div class="modal-overlay" id="cdlCertModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">DVIR Mechanic Certification</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--gray);margin-top:2px;letter-spacing:.05em">§396.11 — CDL / Commercial Vehicle</div>
+      </div>
+      <button class="modal-close" data-close="cdlCertModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--amber-light);border-left:3px solid var(--amber);padding:10px 14px;font-size:13px;color:var(--amber);margin-bottom:16px">
+        This is a CDL vehicle. Federal regulations require mechanic certification before the vehicle returns to service.
+      </div>
+      <div id="cdlDefectList" style="margin-bottom:16px"></div>
+      <div class="form-row">
+        <label class="form-label">Certification</label>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px;border:1px solid var(--border);background:var(--paper)">
+            <input type="radio" name="cdlCert" value="repaired" style="margin-top:2px">
+            <div>
+              <div style="font-weight:600;font-size:13px">Repairs Completed</div>
+              <div style="font-size:12px;color:var(--gray)">All reported defects have been repaired. Vehicle is safe to operate.</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px;border:1px solid var(--border);background:var(--paper)">
+            <input type="radio" name="cdlCert" value="repair_unnecessary" style="margin-top:2px">
+            <div>
+              <div style="font-weight:600;font-size:13px">No Repair Necessary</div>
+              <div style="font-size:12px;color:var(--gray)">Reported items do not affect safe operation. Vehicle may return to service.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:12px">
+        <label class="form-label">Certified by</label>
+        <input class="form-input" id="cdlCertBy" placeholder="Mechanic name" style="margin-top:4px">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="m-btn" data-close="cdlCertModal">Cancel</button>
+      <button class="m-btn primary" id="cdlCertSubmitBtn">Submit Certification</button>
+    </div>
   </div>
 </div>
 
@@ -243,47 +479,142 @@ const KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const H = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
 const BUCKET = 'rexius-fleet-photos';
 
+// Real authentication (Supabase Auth). persistSession keeps mechanics logged in across
+// reloads on shop screens; autoRefreshToken renews the token silently before it expires.
 const sbAuth = supabase.createClient(SUPA, KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
 });
 function setAuthToken(session) {
   H.Authorization = `Bearer ${session ? session.access_token : KEY}`;
 }
+// Keep the header token current when Supabase silently refreshes it.
 sbAuth.auth.onAuthStateChange((_event, session) => { if (session) setAuthToken(session); });
 
 let currentUser = null;
-let assetId     = null;
-let history     = null;   // full get_vehicle_history payload
-let searchMode  = 'this'; // 'this' | 'similar'
-let allAssets   = [];     // for the picker
-const shownTypes = new Set(['wo', 'defect', 'service', 'historical']);
-let searchTimer = null;
+let currentTab  = 'board';
+let tableSort   = { key: 'date_opened', dir: 'desc' }; // shared by All Work Orders + This Week tabs
+let allWOs      = [];
+let allAssets   = [];
+let allPeople   = [];
+let allShops    = [];
+let selectedWO  = null;
+let viewMode    = 'active'; // 'active' | 'archive'
+let archivedWOs = [];
+let previousWoIdForNew = null; // set when creating a follow-up from an archived WO
 
-// ── Boot ───────────────────────────────────────────────────────────
-const urlParams = new URLSearchParams(location.search);
-assetId = urlParams.get('asset') || null;
+// Which summary tiles are visible (persisted). Default: all on.
+const STAT_KEYS = ['urgent','high','open','inprog','unass'];
+let statVisible = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('rexius_wo_stats'));
+    if (saved && typeof saved === 'object') return saved;
+  } catch(e) {}
+  return { urgent: true, high: true, open: true, inprog: true, unass: true };
+})();
+function saveStatVisible() {
+  try { localStorage.setItem('rexius_wo_stats', JSON.stringify(statVisible)); } catch(e) {}
+}
 
+// ── Static event listeners ─────────────────────────────────────────
 document.getElementById('loginBtn').addEventListener('click', () => doLogin());
 document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 document.getElementById('loginEmail').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 document.getElementById('logoutBtn').addEventListener('click', () => doLogout());
-document.getElementById('changeAssetBtn').addEventListener('click', () => showPicker());
-document.getElementById('searchBox').addEventListener('input', () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => runSearch(), 300);
-});
-document.getElementById('modeThis').addEventListener('click', () => setMode('this'));
-document.getElementById('modeSimilar').addEventListener('click', () => setMode('similar'));
-document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
-  const t = c.dataset.type;
-  if (shownTypes.has(t)) { shownTypes.delete(t); c.classList.remove('on'); }
-  else { shownTypes.add(t); c.classList.add('on'); }
-  if (!document.getElementById('searchBox').value.trim()) renderTimeline();
-}));
+document.getElementById('newWOBtn').addEventListener('click', () => openNewWO());
+document.getElementById('searchBox').addEventListener('input', () => applyFilter());
+document.getElementById('filterPri').addEventListener('change', () => applyFilter());
+document.getElementById('filterRegion').addEventListener('change', () => applyFilter());
+document.getElementById('filterShop').addEventListener('change', () => applyFilter());
+document.getElementById('filterMech').addEventListener('change', () => applyFilter());
+document.getElementById('detailCancelBtn').addEventListener('click', () => cancelWO());
+document.getElementById('detailProgressBtn').addEventListener('click', () => advanceStatus());
+document.getElementById('saveNewWOBtn').addEventListener('click', () => saveNewWO());
+document.getElementById('woAssetSearch').addEventListener('input', e => searchAssets(e.target.value));
+document.getElementById('archiveToggleBtn').addEventListener('click', () => toggleArchiveView());
 
+// Stat-tile visibility toggles
+(function setupStatToggles() {
+  const panel = document.getElementById('statTogglePanel');
+  // Reflect current state into the checkboxes
+  panel.querySelectorAll('input[data-stat]').forEach(cb => {
+    cb.checked = !!statVisible[cb.dataset.stat];
+    cb.addEventListener('change', () => {
+      statVisible[cb.dataset.stat] = cb.checked;
+      saveStatVisible();
+      render();
+    });
+  });
+  document.getElementById('statToggleBtn').addEventListener('click', e => {
+    e.stopPropagation();
+    panel.classList.toggle('open');
+  });
+})();
+
+// Restore today's session on load (keeps user logged in for the day)
 tryRestoreSession();
 
-// ── Auth ───────────────────────────────────────────────────────────
+// ── Event delegation ───────────────────────────────────────────────
+document.addEventListener('click', e => {
+  // Close modal buttons
+  const closeBtn = e.target.closest('[data-close]');
+  if (closeBtn) {
+    closeModal(closeBtn.dataset.close);
+    return;
+  }
+
+  // Tab buttons
+  const tab = e.target.closest('.tab[data-tab]');
+  if (tab) {
+    switchTab(tab.dataset.tab);
+    return;
+  }
+
+  // Sortable table headers (All Work Orders / This Week)
+  const sortTh = e.target.closest('th[data-sort]');
+  if (sortTh) {
+    sortTable(sortTh.dataset.sort);
+    return;
+  }
+
+  // WO cards and table rows
+  const woCard = e.target.closest('[data-wo-id]');
+  if (woCard) {
+    openDetail(woCard.dataset.woId);
+    return;
+  }
+
+  // Asset dropdown options
+  const assetOpt = e.target.closest('.asset-opt[data-asset-id]');
+  if (assetOpt) {
+    selectAsset(assetOpt.dataset.assetId, assetOpt.dataset.assetNum, assetOpt.dataset.assetDesc);
+    return;
+  }
+
+  // Close asset dropdown on outside click
+  if (!e.target.closest('#woAssetSearch') && !e.target.closest('#assetDropdown')) {
+    document.getElementById('assetDropdown').style.display = 'none';
+  }
+
+  // Close stat toggle panel on outside click
+  if (!e.target.closest('.stat-toggle-wrap')) {
+    document.getElementById('statTogglePanel').classList.remove('open');
+  }
+});
+
+// ── Login ──────────────────────────────────────────────────────────
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+function enterApp(name) {
+  currentUser = name;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').classList.add('active');
+  document.getElementById('topUser').textContent = name;
+  document.getElementById('woDate').value = todayStr();
+  loadData();
+  startAutoRefresh();
+}
+
+// Resolve the signed-in user's real name (from their linked person record) for audit fields.
 async function resolveIdentity(session) {
   try {
     const id = await rpc('get_my_identity', {});
@@ -302,10 +633,11 @@ async function doLogin() {
   if (error) { err.textContent = error.message || 'Incorrect email or password.'; err.classList.add('show'); return; }
   setAuthToken(data.session);
   const name = await resolveIdentity(data.session);
-  rpc('log_access', { p_tool_name: 'vehicle-history', p_user_name: name, p_action: 'login' });
+  rpc('log_access', { p_tool_name: 'work-orders', p_user_name: name, p_action: 'login' });
   enterApp(name);
 }
 
+// Restore an existing session on load (persists until explicit sign out — shop-screen friendly).
 async function tryRestoreSession() {
   const { data: { session } } = await sbAuth.auth.getSession();
   if (session) {
@@ -316,18 +648,9 @@ async function tryRestoreSession() {
 }
 
 async function doLogout() {
-  rpc('log_access', { p_tool_name: 'vehicle-history', p_user_name: currentUser, p_action: 'logout' });
+  rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'logout' });
   try { await sbAuth.auth.signOut(); } catch(e) {}
   location.reload();
-}
-
-function enterApp(name) {
-  currentUser = name;
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('app').classList.add('active');
-  document.getElementById('topUser').textContent = name;
-  if (assetId) loadHistory();
-  else showPicker();
 }
 
 // ── Data ───────────────────────────────────────────────────────────
@@ -336,210 +659,687 @@ async function rpc(fn, body) {
   return r.json();
 }
 
-async function loadHistory() {
-  showSpinner();
-  document.getElementById('toolbarEl').style.display = '';
+async function loadData(silent = false) {
+  if (!silent) showSpinner();
   try {
-    history = await rpc('get_vehicle_history', { p_asset_id: assetId });
-    if (!history || !history.asset) {
-      document.getElementById('content').innerHTML = '<div class="empty"><div class="empty-icon">⚠</div><p>Vehicle not found</p></div>';
-      document.getElementById('assetHead').style.display = 'none';
-      return;
-    }
-    renderAssetHead();
-    const preQ = urlParams.get('q');
-    if (preQ && !document.getElementById('searchBox').value) {
-      document.getElementById('searchBox').value = preQ;
-      runSearch();
+    // Preserve current filter/search selections across a silent refresh
+    const prev = silent ? {
+      region: document.getElementById('filterRegion').value,
+      shop:   document.getElementById('filterShop').value,
+      mech:   document.getElementById('filterMech').value,
+      pri:    document.getElementById('filterPri').value,
+    } : null;
+
+    if (viewMode === 'archive') {
+      const data = await rpc('get_archived_work_orders', {});
+      archivedWOs = data.work_orders || [];
+      // Mechanics/shops/assets stay from the last active load for filter dropdowns
     } else {
-      renderTimeline();
+      const data = await rpc('get_work_order_portal_data', {});
+      allWOs    = data.work_orders || [];
+      allPeople = data.mechanics   || [];
+      allAssets = data.assets      || [];
+      allShops  = data.shops       || [];
     }
-    rpc('log_access', { p_tool_name: 'vehicle-history', p_user_name: currentUser, p_action: 'view_history', p_metadata: { asset_id: assetId, asset: history.asset.asset_number } });
+    populateFilters();
+
+    if (prev) {
+      // Restore selections if they still exist as options
+      const restore = (id, val) => {
+        const el = document.getElementById(id);
+        if ([...el.options].some(o => o.value === val)) el.value = val;
+      };
+      restore('filterRegion', prev.region);
+      restore('filterShop',   prev.shop);
+      restore('filterMech',   prev.mech);
+      restore('filterPri',    prev.pri);
+    }
+    render();
   } catch(e) {
     console.error(e);
-    document.getElementById('content').innerHTML = '<div class="empty"><div class="empty-icon">⚠</div><p>Failed to load history</p></div>';
+    if (!silent) document.getElementById('content').innerHTML = '<div class="empty"><div class="empty-icon">⚠</div><p>Failed to load data</p></div>';
   }
 }
 
-// ── Asset header ───────────────────────────────────────────────────
-function renderAssetHead() {
-  const a = history.asset;
-  const m = history.latest_meter || {};
-  const head = document.getElementById('assetHead');
-  head.style.display = '';
-  const badges = [];
-  if (a.is_cdl) badges.push('<span class="badge badge-cdl">CDL</span>');
-  badges.push(`<span class="badge ${a.status === 'active' ? 'badge-active' : 'badge-inactive'}">${esc(a.status || 'unknown')}</span>`);
-  if (a.dept != null) badges.push(`<span class="badge badge-dept">Dept ${esc(String(a.dept))}</span>`);
-  if (a.asset_subtype) badges.push(`<span class="badge badge-inactive">${esc(a.asset_subtype)}</span>`);
-  const facts = [];
-  const fact = (l, v) => { if (v) facts.push(`<div><div class="fact-l">${l}</div><div class="fact-v">${esc(String(v))}</div></div>`); };
-  fact('VIN', a.vin);
-  fact('Plate', a.license_plate);
-  fact('Odometer', m.odometer != null ? Number(m.odometer).toLocaleString() + ' mi' : null);
-  fact('Engine Hours', m.engine_hours != null ? Number(m.engine_hours).toLocaleString() + ' hrs' : null);
-  fact('In Service', a.in_service_since ? fmtDate(a.in_service_since) : null);
-  fact('Tires', a.tire_size);
-  head.innerHTML = `
-    <div>
-      <div class="asset-num">${esc(a.asset_number)}</div>
-      <div class="asset-sub">${esc([a.year, a.make, a.model].filter(Boolean).join(' ')) || '—'}${a.color ? ' · ' + esc(a.color) : ''}</div>
-      <div class="asset-badges">${badges.join('')}</div>
-    </div>
-    <div class="asset-facts">${facts.join('')}</div>
-    ${a.driver_notice ? `<div class="driver-notice"><strong>Driver notice:</strong> ${esc(a.driver_notice)}</div>` : ''}`;
+function toggleArchiveView() {
+  viewMode = viewMode === 'archive' ? 'active' : 'archive';
+  const btn = document.getElementById('archiveToggleBtn');
+  const newBtn = document.getElementById('newWOBtn');
+  if (viewMode === 'archive') {
+    btn.textContent = '← Back to Board';
+    btn.classList.add('primary');
+    newBtn.style.display = 'none';
+    if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } // no need to poll old data
+  } else {
+    btn.textContent = 'Previous Work Orders';
+    btn.classList.remove('primary');
+    newBtn.style.display = '';
+    startAutoRefresh();
+  }
+  loadData();
 }
 
-// ── Timeline ───────────────────────────────────────────────────────
-function buildEvents() {
-  const ev = [];
-  if (shownTypes.has('wo')) (history.work_orders || []).forEach(w => ev.push({ type: 'wo', date: w.date_opened, d: w }));
-  if (shownTypes.has('defect')) (history.defects || []).forEach(d => ev.push({ type: 'defect', date: d.reported_at, d }));
-  if (shownTypes.has('service')) (history.service_records || []).forEach(s => ev.push({ type: 'service', date: s.completed_date, d: s }));
-  if (shownTypes.has('historical')) (history.historical_defects || []).forEach(h => ev.push({ type: 'historical', date: h.inspection_date, d: h }));
-  if (shownTypes.has('inspection')) (history.inspections || []).forEach(i => ev.push({ type: 'inspection', date: i.date_inspected, d: i }));
-  ev.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  return ev;
+// ── Auto-refresh (shop job board) ──────────────────────────────────
+let refreshTimer = null;
+function isModalOpen() {
+  return document.querySelector('.modal-overlay.open') !== null;
+}
+function startAutoRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    // Don't repaint while a modal is open (someone is mid-action)
+    if (!isModalOpen()) loadData(true);
+  }, 30000);
 }
 
-function renderTimeline() {
-  const c = document.getElementById('content');
-  const wos = history.work_orders || [], defs = history.defects || [], srs = history.service_records || [];
-  const totalCost = wos.reduce((s, w) => s + (parseFloat(w.total_cost || w.total_parts_cost) || 0), 0)
-                  + srs.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-  const openDefs = defs.filter(d => d.status === 'open').length;
-  const stats = `
-    <div class="stat-row">
-      <div class="stat wo"><div class="stat-n">${wos.length}</div><div class="stat-l">Work Orders</div></div>
-      <div class="stat def"><div class="stat-n">${defs.length}${openDefs ? ` <span style="font-size:14px;color:var(--red)">(${openDefs} open)</span>` : ''}</div><div class="stat-l">Defects</div></div>
-      <div class="stat svc"><div class="stat-n">${srs.length}</div><div class="stat-l">Service Records</div></div>
-      <div class="stat cost"><div class="stat-n">$${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div><div class="stat-l">Lifetime Recorded Cost</div></div>
-    </div>`;
+function populateFilters() {
+  const regions = [...new Set(allShops.map(s => s.region).filter(Boolean))].sort();
+  const rs = document.getElementById('filterRegion');
+  rs.innerHTML = '<option value="all">All regions</option>' + regions.map(r => `<option value="${r}">${r}</option>`).join('');
 
-  let media = '';
-  if (shownTypes.has('media')) {
-    const photos = history.asset_photos || [];
-    const docs = history.documents || [];
-    media = `
-      <div class="tl-group">
-        <div class="tl-year">Photos &amp; Documents</div>
-        ${photos.length ? `<div class="photo-grid" id="assetPhotoGrid">${photos.map((p, i) => `<div class="photo-thumb" id="ap-${i}"><div class="photo-loading">…</div></div>`).join('')}</div>` : '<div class="empty" style="padding:12px"><p>No standalone photos.</p></div>'}
-        ${docs.map(d => `<div class="tl-card t-historical" style="margin-top:8px"><div class="tl-head"><span class="tl-type tt-historical">Document</span><span class="tl-date">${fmtDate(d.document_date)}</span></div><div class="tl-title">${esc(d.description || 'Document')}</div>${d.notes ? `<div class="tl-notes">${esc(d.notes)}</div>` : ''}<div class="tl-meta"><a href="#" class="sr-open doc-open" data-path="${esc(d.path || '')}">open</a></div></div>`).join('')}
-      </div>`;
-  }
+  const ss = document.getElementById('filterShop');
+  ss.innerHTML = '<option value="all">All shops</option>' + allShops.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 
-  const events = buildEvents();
-  if (!events.length && !media) {
-    c.innerHTML = stats + '<div class="empty"><div class="empty-icon">∅</div><p>No history on record for the selected types.</p></div>';
-    return;
-  }
+  const ms = document.getElementById('filterMech');
+  ms.innerHTML = '<option value="all">All mechanics</option><option value="unassigned">Unassigned</option>' +
+    allPeople.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
 
-  // Group by year
-  const groups = new Map();
-  events.forEach(e => {
-    const y = (String(e.date || '').slice(0, 4)) || 'Undated';
-    if (!groups.has(y)) groups.set(y, []);
-    groups.get(y).push(e);
+  const wm = document.getElementById('woMechanic');
+  wm.innerHTML = '<option value="">Unassigned</option>' + allPeople.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+
+  const wsh = document.getElementById('woShop');
+  wsh.innerHTML = '<option value="">Unassigned</option>' + allShops.map(s => `<option value="${s.id}">${s.name} (${s.region})</option>`).join('');
+}
+
+function getFiltered() {
+  const source = viewMode === 'archive' ? archivedWOs : allWOs;
+  const q      = document.getElementById('searchBox').value.toLowerCase();
+  const pri    = document.getElementById('filterPri').value;
+  const region = document.getElementById('filterRegion').value;
+  const shop   = document.getElementById('filterShop').value;
+  const mech   = document.getElementById('filterMech').value;
+  return source.filter(w => {
+    if (q && !((w.asset_number||'').toLowerCase().includes(q) || (w.description||'').toLowerCase().includes(q) || (w.mechanic||'').toLowerCase().includes(q))) return false;
+    if (pri    !== 'all' && w.priority !== pri) return false;
+    if (region !== 'all' && w.region !== region) return false;
+    if (shop   !== 'all' && w.shop_id !== shop) return false;
+    if (mech === 'unassigned' && w.mechanic_id) return false;
+    if (mech !== 'all' && mech !== 'unassigned' && w.mechanic_id !== mech) return false;
+    return true;
   });
-  let html = stats + media;
-  for (const [year, list] of groups) {
-    html += `<div class="tl-group"><div class="tl-year">${esc(year)}</div>${list.map(renderEvent).join('')}</div>`;
-  }
-  c.innerHTML = html;
-  hydratePhotos(c);
-  bindDocLinks(c);
 }
 
-function renderEvent(e) {
-  const d = e.d;
-  if (e.type === 'wo') {
-    const tags = [];
-    if (d.mechanic) tags.push(`<span class="tl-tag tag-mech">${esc(d.mechanic)}</span>`);
-    if (d.total_cost || d.total_parts_cost) tags.push(`<span class="tl-tag tag-cost">$${(parseFloat(d.total_cost || d.total_parts_cost)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>`);
-    if (d.mileage_at_service) tags.push(`<span class="tl-tag tag-meter">${Number(d.mileage_at_service).toLocaleString()} mi</span>`);
-    if (d.engine_hours_at_service) tags.push(`<span class="tl-tag tag-meter">${Number(d.engine_hours_at_service).toLocaleString()} hrs</span>`);
-    if (d.mechanic_certification) tags.push(`<span class="tl-tag tag-cert">§396.11 ${d.mechanic_certification === 'repaired' ? 'Repaired' : 'No Repair Needed'}</span>`);
-    return `<div class="tl-card t-wo" data-ev="wo" data-id="${esc(d.id)}">
-      <div class="tl-head"><span class="tl-type tt-wo">Work Order</span>${d.work_order_number ? `<span class="tl-tag tag-meter">${esc(d.work_order_number)}</span>` : ''}<span class="st st-${esc(d.status || 'open')}">${esc((d.status || '').replace('_', ' '))}</span><span class="tl-date">${fmtDate(d.date_opened)}${d.date_completed ? ' → ' + fmtDate(d.date_completed) : ''}</span></div>
-      <div class="tl-title">${esc(d.description || '—')}</div>
-      <div class="tl-meta">${tags.join('')}</div>
-      ${d.notes ? `<div class="tl-notes">${esc(d.notes)}</div>` : ''}
-      ${photoGridHtml(d.photos)}
-    </div>`;
-  }
-  if (e.type === 'defect') {
-    return `<div class="tl-card t-defect" data-ev="defect" data-id="${esc(d.id)}">
-      <div class="tl-head"><span class="tl-type tt-defect">Defect</span>${d.severity ? `<span class="sev sev-${esc(d.severity)}">${esc(d.severity)}</span>` : ''}<span class="st st-${esc(d.status || 'open')}">${esc(d.status || '')}</span>${d.category ? `<span class="tl-tag tag-meter">${esc(d.category)}</span>` : ''}<span class="tl-date">${fmtDate(d.reported_at)}</span></div>
-      <div class="tl-title">${esc(d.description || '—')}</div>
-      <div class="tl-meta">${d.reported_by ? `<span class="tl-tag tag-meter">Reported by ${esc(d.reported_by)}</span>` : ''}${d.corrected_at ? `<span class="tl-tag tag-mech">Corrected ${fmtDate(d.corrected_at)}${d.corrected_by ? ' by ' + esc(d.corrected_by) : ''}</span>` : ''}</div>
-      ${d.correction_notes ? `<div class="tl-notes">Fix: ${esc(d.correction_notes)}</div>` : ''}
-      ${photoGridHtml(d.photos)}
-    </div>`;
-  }
-  if (e.type === 'service') {
-    const tags = [];
-    if (d.performed_by) tags.push(`<span class="tl-tag tag-mech">${esc(d.performed_by)}</span>`);
-    if (d.supplier) tags.push(`<span class="tl-tag tag-meter">${esc(d.supplier)}</span>`);
-    if (d.amount) tags.push(`<span class="tl-tag tag-cost">$${parseFloat(d.amount).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>`);
-    if (d.odometer) tags.push(`<span class="tl-tag tag-meter">${Number(d.odometer).toLocaleString()} mi</span>`);
-    if (d.engine_hours) tags.push(`<span class="tl-tag tag-meter">${Number(d.engine_hours).toLocaleString()} hrs</span>`);
-    return `<div class="tl-card t-service" data-ev="service" data-id="${esc(d.id)}">
-      <div class="tl-head"><span class="tl-type tt-service">Service</span><span class="tl-date">${fmtDate(d.completed_date)}</span></div>
-      <div class="tl-title">${esc(d.service_type || 'Service')}</div>
-      <div class="tl-meta">${tags.join('')}</div>
-      ${d.notes ? `<div class="tl-notes">${esc(d.notes)}</div>` : ''}
-    </div>`;
-  }
-  if (e.type === 'historical') {
-    return `<div class="tl-card t-historical" data-ev="historical" data-id="${esc(d.id)}">
-      <div class="tl-head"><span class="tl-type tt-historical">Historical Defect</span>${d.form_name ? `<span class="tl-tag tag-meter">${esc(d.form_name)}</span>` : ''}<span class="tl-date">${fmtDate(d.inspection_date)}</span></div>
-      <div class="tl-title">${esc(d.defect_details || (d.defect_count + ' defect(s) reported'))}</div>
-      <div class="tl-meta">${d.driver_name ? `<span class="tl-tag tag-meter">${esc(d.driver_name)}</span>` : ''}<span class="tl-tag tag-meter">${esc(d.source || 'import')}</span></div>
-    </div>`;
-  }
-  // inspection
-  return `<div class="tl-card t-inspection" data-ev="inspection" data-id="${esc(d.id)}">
-    <div class="tl-head"><span class="tl-type tt-inspection">Inspection</span><span class="st st-${esc(d.status || 'passed')}">${esc(d.status || '')}</span><span class="tl-date">${fmtDateTime(d.date_inspected)}</span></div>
-    <div class="tl-meta">${d.inspector ? `<span class="tl-tag tag-meter">${esc(d.inspector)}</span>` : ''}${d.form_name ? `<span class="tl-tag tag-meter">${esc(d.form_name)}</span>` : ''}</div>
+function applyFilter() { render(); }
+
+// ── Render ─────────────────────────────────────────────────────────
+function render() {
+  const wos    = getFiltered();
+  const open   = wos.filter(w => w.status === 'open');
+  const inprog = wos.filter(w => w.status === 'in_progress');
+  const done   = wos.filter(w => w.status === 'completed');
+  const now    = new Date();
+  const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay());
+  const thisWeek = wos.filter(w => new Date(w.date_opened) >= startOfWeek);
+
+  document.getElementById('badge-board').textContent = open.length + inprog.length;
+  document.getElementById('badge-list').textContent  = wos.length;
+  document.getElementById('badge-week').textContent  = thisWeek.length;
+
+  const urgent = wos.filter(w => w.priority === 'urgent' && w.status !== 'completed').length;
+  const high   = wos.filter(w => w.priority === 'high'   && w.status !== 'completed').length;
+  const unass  = wos.filter(w => !w.mechanic_id           && w.status !== 'completed').length;
+
+  const tiles = {
+    urgent: `<div class="stat urgent"><div class="stat-n" style="color:var(--red)">${urgent}</div><div class="stat-l">Urgent</div></div>`,
+    high:   `<div class="stat high"><div class="stat-n" style="color:#ea580c">${high}</div><div class="stat-l">High Priority</div></div>`,
+    open:   `<div class="stat normal"><div class="stat-n" style="color:var(--amber)">${open.length}</div><div class="stat-l">Open</div></div>`,
+    inprog: `<div class="stat low"><div class="stat-n" style="color:var(--blue)">${inprog.length}</div><div class="stat-l">In Progress</div></div>`,
+    unass:  `<div class="stat done"><div class="stat-n" style="color:var(--green)">${unass}</div><div class="stat-l">Unassigned</div></div>`,
+  };
+  const statsHtml = `<div class="stat-row">${STAT_KEYS.filter(k => statVisible[k]).map(k => tiles[k]).join('')}</div>`;
+
+  if (currentTab === 'board') renderBoard(statsHtml, open, inprog, done);
+  else if (currentTab === 'list') renderTable(statsHtml, wos);
+  else if (currentTab === 'week') renderTable(statsHtml, thisWeek, true);
+}
+
+function woCard(w) {
+  const pri  = w.priority || 'normal';
+  const mech = w.mechanic
+    ? `<span class="wo-tag tag-mech">${w.mechanic}</span>`
+    : `<span class="wo-tag tag-unassigned">Unassigned</span>`;
+  const cost = w.total_parts_cost ? `<span class="wo-tag tag-cost">$${parseFloat(w.total_parts_cost).toLocaleString()}</span>` : '';
+  const cdl = w.is_cdl ? `<span class="wo-tag" style="background:#1e3a5f;color:#fff;font-family:var(--mono);font-size:9px;font-weight:700">CDL</span>` : '';
+  const pm = w.source === 'scheduled_service' ? `<span class="wo-tag" style="background:var(--green-light);color:var(--green);font-family:var(--mono);font-size:9px;font-weight:700">PM</span>` : '';
+  const woNum = w.work_order_number ? `<span style="font-family:var(--mono);font-size:9px;color:var(--gray)">${w.work_order_number}</span>` : '';
+  return `<div class="wo-card ${pri}" data-wo-id="${w.id}">
+    <div class="wo-asset" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${esc(w.asset_number || '—')} ${cdl} ${pm} ${woNum}</div>
+    <div class="wo-desc">${esc(w.description || '—')}</div>
+    <div class="wo-meta">
+      <span class="wo-tag tag-team">${esc(w.team || '—')}</span>
+      ${w.shop ? `<span class="wo-tag tag-shop">${esc(w.shop)}</span>` : ''}
+      ${mech}${cost}
+      <span class="wo-date">${fmtDate(w.date_opened)}</span>
+    </div>
   </div>`;
 }
 
-function photoGridHtml(photos) {
-  if (!photos || !photos.length) return '';
-  return `<div class="photo-grid">${photos.map(p => `<div class="photo-thumb lazy-photo" data-path="${esc(p.path || '')}"><div class="photo-loading">…</div></div>`).join('')}</div>`;
+function renderBoard(stats, open, inprog, done) {
+  document.getElementById('content').innerHTML = stats + `
+    <div class="kanban">
+      <div class="lane">
+        <div class="lane-header"><span class="lane-title">Open</span><span class="lane-count">${open.length}</span></div>
+        <div class="lane-body">${open.length ? open.map(woCard).join('') : '<div class="empty"><div class="empty-icon">✓</div><p>No open work orders</p></div>'}</div>
+      </div>
+      <div class="lane">
+        <div class="lane-header"><span class="lane-title">In Progress</span><span class="lane-count">${inprog.length}</span></div>
+        <div class="lane-body">${inprog.length ? inprog.map(woCard).join('') : '<div class="empty"><div class="empty-icon">🔧</div><p>Nothing in progress</p></div>'}</div>
+      </div>
+      <div class="lane">
+        <div class="lane-header"><span class="lane-title">Completed</span><span class="lane-count">${done.length}</span></div>
+        <div class="lane-body scrollable">${done.length ? [...done].sort((a, b) => new Date(b.date_completed || b.date_opened || 0) - new Date(a.date_completed || a.date_opened || 0)).map(woCard).join('') : '<div class="empty"><div class="empty-icon">📋</div><p>None yet</p></div>'}</div>
+      </div>
+    </div>`;
 }
 
-function hydratePhotos(root) {
-  // Standalone asset photos (by index)
-  const ap = history.asset_photos || [];
-  ap.forEach(async (p, i) => {
-    const el = root.querySelector(`#ap-${i}`);
-    if (!el) return;
-    const url = await resolvePhoto(p.path);
-    el.innerHTML = url ? `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="Asset photo" loading="lazy"></a>` : '<div class="photo-loading">⚠</div>';
-  });
-  // Event photos
-  root.querySelectorAll('.lazy-photo').forEach(async el => {
-    const url = await resolvePhoto(el.dataset.path);
-    el.innerHTML = url ? `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="Photo" loading="lazy"></a>` : '<div class="photo-loading">⚠</div>';
+const PRI_RANK = { urgent: 0, high: 1, normal: 2, low: 3 };
+const ST_RANK  = { open: 0, in_progress: 1, completed: 2 };
+
+function sortWOs(wos) {
+  const { key, dir } = tableSort;
+  const mult = dir === 'asc' ? 1 : -1;
+  return [...wos].sort((a, b) => {
+    let cmp;
+    if (key === 'date_opened') {
+      cmp = new Date(a.date_opened || 0) - new Date(b.date_opened || 0);
+    } else if (key === 'total_parts_cost') {
+      cmp = (parseFloat(a.total_parts_cost) || 0) - (parseFloat(b.total_parts_cost) || 0);
+    } else if (key === 'priority') {
+      cmp = (PRI_RANK[a.priority] ?? 9) - (PRI_RANK[b.priority] ?? 9);
+    } else if (key === 'status') {
+      cmp = (ST_RANK[a.status] ?? 9) - (ST_RANK[b.status] ?? 9);
+    } else {
+      cmp = String(a[key] || '').localeCompare(String(b[key] || ''), undefined, { numeric: true, sensitivity: 'base' });
+    }
+    return cmp * mult;
   });
 }
 
-function bindDocLinks(root) {
-  root.querySelectorAll('.doc-open').forEach(a => a.addEventListener('click', async ev => {
+function sortTable(key) {
+  if (tableSort.key === key) {
+    tableSort.dir = tableSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    // Sensible first-click direction: dates + rank columns start desc/best-first, text starts asc
+    tableSort = { key, dir: key === 'date_opened' || key === 'total_parts_cost' ? 'desc' : 'asc' };
+  }
+  render();
+}
+
+function renderTable(stats, wos) {
+  wos = sortWOs(wos);
+  const rows = wos.length ? wos.map(w => {
+    const pri  = w.priority ? `<span class="pri pri-${w.priority}">${w.priority}</span>` : `<span class="pri pri-null">—</span>`;
+    const st   = `<span class="st st-${w.status}">${esc(w.status.replace('_', ' '))}</span>`;
+    const mech = w.mechanic ? esc(w.mechanic) : '<span style="color:var(--gray);font-size:11px">Unassigned</span>';
+    const cost = w.total_parts_cost ? `$${parseFloat(w.total_parts_cost).toLocaleString()}` : '—';
+    return `<tr data-wo-id="${w.id}">
+      <td><span style="font-family:var(--mono);font-size:12px;font-weight:600">${esc(w.asset_number || '—')}</span></td>
+      <td>${esc(w.description || '—')}</td>
+      <td><span style="font-size:11px;color:var(--gray)">${esc(w.team || '—')}</span></td>
+      <td><span style="font-size:11px;color:var(--gray)">${esc(w.shop || '—')}</span></td>
+      <td>${pri}</td>
+      <td>${st}</td>
+      <td style="font-size:12px">${mech}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--gray)">${cost}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--gray)">${fmtDate(w.date_opened)}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="9"><div class="empty"><div class="empty-icon">📋</div><p>No work orders</p></div></td></tr>`;
+
+  document.getElementById('content').innerHTML = stats + `
+    <table class="wo-table">
+      <thead><tr>${[
+        ['asset_number', 'Asset'], ['description', 'Description'], ['team', 'Group'], ['shop', 'Shop'],
+        ['priority', 'Priority'], ['status', 'Status'], ['mechanic', 'Mechanic'], ['total_parts_cost', 'Cost'], ['date_opened', 'Date'],
+      ].map(([k, label]) => `<th data-sort="${k}">${label}${tableSort.key === k ? (tableSort.dir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ── Detail modal ───────────────────────────────────────────────────
+function openDetail(id) {
+  const source = viewMode === 'archive' ? archivedWOs : allWOs;
+  selectedWO = source.find(w => w.id === id);
+  if (!selectedWO) return;
+  const w = selectedWO;
+  const readOnly = viewMode === 'archive';
+
+  document.getElementById('detailTitle').textContent = w.description || '—';
+  const cdlBadge = w.is_cdl ? ' <span style="font-family:var(--mono);font-size:9px;font-weight:700;background:#1e3a5f;color:#fff;padding:1px 6px;vertical-align:middle">CDL</span>' : '';
+  const pmBadge = w.source === 'scheduled_service' ? ' <span style="font-family:var(--mono);font-size:9px;font-weight:700;background:var(--green-light);color:var(--green);padding:1px 6px;vertical-align:middle">PM — Scheduled Service</span>' : '';
+  const woNumBadge = w.work_order_number ? ` <span style="font-family:var(--mono);font-size:10px;color:var(--gray)">${w.work_order_number}</span>` : '';
+  document.getElementById('detailAsset').innerHTML = [w.asset_number, w.year, w.make, w.model].filter(Boolean).join(' · ') + cdlBadge + pmBadge + woNumBadge;
+
+  const cost = w.total_parts_cost ? `$${parseFloat(w.total_parts_cost).toLocaleString()}` : '—';
+
+  const mechOptions = '<option value="">Unassigned</option>' +
+    allPeople.map(p => `<option value="${p.id}" ${p.id === w.mechanic_id ? 'selected' : ''}>${p.name}</option>`).join('');
+
+  const shopOptions = '<option value="">Unassigned</option>' +
+    allShops.map(sh => `<option value="${sh.id}" ${sh.id === w.shop_id ? 'selected' : ''}>${sh.name}${sh.region ? ` (${sh.region})` : ''}</option>`).join('');
+
+  const history = (w.assignments && w.assignments.length)
+    ? w.assignments.map(a => `
+        <div class="assign-row">
+          <span class="assign-mech">${a.mechanic || 'Unassigned'}</span>
+          <span class="assign-by">by ${a.assigned_by || '—'}</span>
+          <span class="assign-at">${fmtDateTime(a.assigned_at)}</span>
+        </div>`).join('')
+    : '<div class="assign-empty">No assignment history yet.</div>';
+
+  const updates = (w.updates && w.updates.length)
+    ? w.updates.map(u => `
+        <div class="upd-row">
+          <div class="upd-head">
+            <span class="upd-type upd-type-${(u.type||'Note').toLowerCase()}">${u.type || 'Note'}</span>
+            <span class="upd-by">${esc(u.by) || '—'}</span>
+            <span class="upd-at">${fmtDateTime(u.at)}</span>
+          </div>
+          <div class="upd-text">${esc(u.text)}</div>
+        </div>`).join('')
+    : '<div class="assign-empty">No updates yet.</div>';
+
+  const expenses = w.expenses || [];
+  const expTotal = parseFloat(w.expenses_total || 0);
+  const laborTotal = parseFloat(w.labor_hours_total || 0);
+  const expensesTotalLabel = (expTotal > 0 ? ` · <span style="color:var(--green)">$${expTotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span>` : '')
+    + (laborTotal > 0 ? ` · <span style="color:var(--blue)">${laborTotal} labor hrs</span>` : '');
+  const expensesHtml = expenses.length
+    ? expenses.map(e => `
+        <div class="exp-row" data-exp-id="${e.id}">
+          <div class="exp-main">
+            ${e.amount != null ? `<span class="exp-amt">$${parseFloat(e.amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span>` : ''}
+            ${e.labor_type ? `<span class="exp-labor">${esc(e.labor_type)}${e.labor_hours != null ? ` · ${parseFloat(e.labor_hours)} hrs` : ''}</span>` : ''}
+            ${e.vendor ? `<span class="exp-vendor">${esc(e.vendor)}</span>` : ''}
+            ${e.part_number ? `<span class="exp-part">${esc(e.part_number)}</span>` : ''}
+          </div>
+          ${e.note ? `<div class="exp-note">${esc(e.note)}</div>` : ''}
+          <div class="exp-meta">
+            <span>${esc(e.created_by) || '—'} · ${fmtDateTime(e.created_at)}</span>
+            ${e.receipt_path ? `<a class="exp-receipt" data-receipt="${esc(e.receipt_path)}" href="#" style="color:var(--green)">receipt</a>${!readOnly && e.receipt_id ? ` <button class="exp-receipt-remove" data-receipt-id="${e.receipt_id}" title="Remove receipt">×</button>` : ''}` : ''}
+            <button class="exp-void" data-exp-id="${e.id}" title="Void this expense">void</button>
+          </div>
+        </div>`).join('')
+    : '<div class="assign-empty">No expenses logged.</div>';
+
+  document.getElementById('detailBody').innerHTML = `
+    <div class="modal-grid">
+      <div class="modal-section"><div class="modal-label">Status</div><div class="modal-value"><span class="st st-${w.status}">${esc(w.status.replace('_', ' '))}</span></div></div>
+      <div class="modal-section"><div class="modal-label">Priority</div><div class="modal-value">${w.priority ? `<span class="pri pri-${w.priority}">${esc(w.priority)}</span>` : '—'}</div></div>
+      <div class="modal-section"><div class="modal-label">Group</div><div class="modal-value">${esc(w.team || '—')}</div></div>
+      <div class="modal-section"><div class="modal-label">Shop</div><div class="modal-value">${w.shop ? `${esc(w.shop)}${w.region ? ` · ${esc(w.region)}` : ''}` : '—'}</div></div>
+      <div class="modal-section"><div class="modal-label">Currently Assigned</div><div class="modal-value">${esc(w.mechanic || 'Unassigned')}</div></div>
+      <div class="modal-section"><div class="modal-label">Date Opened</div><div class="modal-value">${fmtDate(w.date_opened)}</div></div>
+      <div class="modal-section"><div class="modal-label">Parts Cost Est.</div><div class="modal-value">${cost}</div></div>
+    </div>
+
+    ${w.asset_status ? `
+    <div class="modal-section" style="margin-top:14px;background:${w.asset_status === 'out_of_service' ? 'var(--red-light)' : 'var(--surface)'};padding:12px;border-left:3px solid ${w.asset_status === 'out_of_service' ? 'var(--red)' : 'var(--green)'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div>
+          <div class="modal-label" style="margin-bottom:4px">Vehicle Status</div>
+          <div class="modal-value">
+            <span class="st ${w.asset_status === 'out_of_service' ? 'st-open' : 'st-completed'}">${w.asset_status === 'out_of_service' ? 'Out of Service' : w.asset_status === 'retired' ? 'Retired' : 'In Service'}</span>
+            ${w.asset_status === 'out_of_service' && w.out_of_service_since ? `<span style="font-family:var(--mono);font-size:11px;color:var(--gray);margin-left:8px">since ${fmtDateTime(w.out_of_service_since)}</span>` : ''}
+          </div>
+        </div>
+        ${(readOnly || w.asset_status === 'retired') ? '' : `<button class="m-btn ${w.asset_status === 'out_of_service' ? 'primary' : 'danger'}" id="vehStatusBtn">${w.asset_status === 'out_of_service' ? 'Return to Service' : 'Take Out of Service'}</button>`}
+      </div>
+    </div>` : ''}
+
+    ${(w.operator_phone || w.supervisor) ? `
+    <div class="modal-section" style="margin-top:14px;background:var(--surface);padding:12px;border-left:3px solid var(--green)">
+      <div class="modal-label">Follow-up Contacts</div>
+      <div class="modal-grid" style="margin-top:6px">
+        <div>
+          <div class="modal-label" style="color:var(--gray)">Operator</div>
+          <div class="modal-value">${w.operator_phone ? fmtPhone(w.operator_phone) : '<span style="color:var(--gray)">—</span>'}</div>
+        </div>
+        <div>
+          <div class="modal-label" style="color:var(--gray)">Supervisor</div>
+          <div class="modal-value">
+            ${w.supervisor ? `
+              ${esc(w.supervisor.matched_name || w.supervisor.raw_name)}
+              ${w.supervisor.matched_name ? '' : '<span style="color:var(--gray);font-size:11px"> (unmatched)</span>'}
+              ${w.supervisor.phone ? `<div style="font-size:12px;margin-top:2px">${fmtPhone(w.supervisor.phone)}</div>` : ''}
+              ${w.supervisor.email ? `<div style="font-size:12px"><a href="mailto:${esc(w.supervisor.email)}" style="color:var(--green)">${esc(w.supervisor.email)}</a></div>` : ''}
+            ` : '<span style="color:var(--gray)">—</span>'}
+          </div>
+        </div>
+      </div>
+    </div>` : ''}
+
+    ${w.inspection ? `
+    <div class="modal-section" style="margin-top:14px;background:var(--surface);padding:12px;border-left:3px solid var(--ink)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="modal-label" style="margin-bottom:0">Originating Inspection</div>
+        <button class="m-btn" id="viewInspBtn" data-insp-id="${w.inspection.id}" style="padding:4px 10px;font-size:10px">View Full Inspection</button>
+      </div>
+      <div class="modal-grid" style="margin-top:8px">
+        <div><div class="modal-label" style="color:var(--gray)">Inspector</div><div class="modal-value">${esc(w.inspection.inspector) || '—'}</div></div>
+        <div><div class="modal-label" style="color:var(--gray)">Date</div><div class="modal-value">${fmtDateTime(w.inspection.date_inspected)}</div></div>
+        <div><div class="modal-label" style="color:var(--gray)">Result</div><div class="modal-value"><span class="st st-${w.inspection.status === 'failed' ? 'open' : 'completed'}">${esc(w.inspection.status) || '—'}</span></div></div>
+        <div><div class="modal-label" style="color:var(--gray)">Form</div><div class="modal-value">${esc(w.inspection.form_name) || '—'}</div></div>
+      </div>
+    </div>` : ''}
+
+    ${w.is_cdl ? `
+    <div class="modal-section" style="margin-top:14px;background:${w.mechanic_certification ? '#f8faf8' : '#fffdf0'};padding:12px;border-left:3px solid ${w.mechanic_certification ? 'var(--green)' : 'var(--amber)'}">
+      <div class="modal-label" style="margin-bottom:6px">§396.11 DVIR Certification</div>
+      ${w.mechanic_certification
+        ? `<div style="font-size:13px;font-weight:600;color:var(--green)">${w.mechanic_certification === 'repaired' ? 'Repairs Completed' : 'No Repair Necessary'}</div>
+           <div style="font-size:11px;color:var(--gray);margin-top:3px">Certified by ${esc(w.certified_by)} · ${fmtDateTime(w.certified_at)}</div>`
+        : `<div style="font-size:12px;color:var(--amber)">Pending certification — required before vehicle returns to service.</div>`
+      }
+    </div>` : ''}
+
+    ${w.previous_wo ? `
+    <div class="modal-section" style="margin-top:14px;background:var(--surface);padding:12px;border-left:3px solid var(--blue)">
+      <div class="modal-label">From Previous Work Order</div>
+      <div class="modal-value" style="margin-top:4px">${esc(w.previous_wo.description) || '—'}</div>
+      <div style="font-size:11px;color:var(--gray);margin-top:2px">
+        Completed ${fmtDate(w.previous_wo.date_completed)}${w.previous_wo.mechanic ? ` by ${esc(w.previous_wo.mechanic)}` : ''}${w.previous_wo.total_parts_cost ? ` · $${parseFloat(w.previous_wo.total_parts_cost).toLocaleString()}` : ''}
+      </div>
+      <div class="photo-grid" id="prevPhotoGrid" style="margin-top:8px"></div>
+    </div>` : (!readOnly ? `
+    <div class="modal-section" style="margin-top:14px">
+      <div class="modal-label">Link to Previous Work Order</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+        <input type="text" id="prevWoSearch" placeholder="Search closed work orders on ${esc(w.asset_number) || 'this asset'}..." class="form-input" style="flex:1" autocomplete="off">
+      </div>
+      <div id="prevWoResults" class="assign-history" style="margin-top:6px;display:none"></div>
+    </div>` : '')}
+
+    ${readOnly ? '' : `
+    <div class="modal-section" style="margin-top:14px">
+      <div class="modal-label">Assign / Reassign</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+        <select class="form-select" id="assignMech" style="flex:1">${mechOptions}</select>
+        <button class="m-btn primary" id="assignBtn" style="white-space:nowrap">Assign</button>
+      </div>
+      <div style="font-size:11px;color:var(--gray);margin-top:4px">Assignment will be recorded as <strong>${currentUser}</strong> at the current time.</div>
+    </div>
+
+    <div class="modal-section" style="margin-top:14px">
+      <div class="modal-label">Shop Location</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+        <select class="form-select" id="assignShop" style="flex:1">${shopOptions}</select>
+        <button class="m-btn primary" id="assignShopBtn" style="white-space:nowrap">Set Shop</button>
+      </div>
+    </div>`}
+
+    <div class="modal-section" style="margin-top:14px">
+      <div class="modal-label">Assignment History</div>
+      <div class="assign-history">${history}</div>
+    </div>
+
+    <div class="modal-section" style="margin-top:14px">
+      <div class="modal-label">Updates</div>
+      <div style="display:flex;gap:8px;align-items:flex-start;margin-top:4px">
+        <textarea class="form-textarea" id="updText" placeholder="Add a progress update..." style="flex:1;min-height:54px"></textarea>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <select class="form-select" id="updType" style="width:120px">
+            <option value="Note">Note</option>
+            <option value="Status">Status</option>
+            <option value="Parts">Parts</option>
+            <option value="Customer">Customer</option>
+            <option value="Other">Other</option>
+          </select>
+          <button class="m-btn primary" id="updBtn">Add Update</button>
+        </div>
+      </div>
+      <div class="upd-list">${updates}</div>
+    </div>
+
+    <div class="modal-section" style="margin-top:14px">
+      <div class="modal-label">Photos</div>
+      ${readOnly ? '' : `
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+        <input type="file" id="photoFile" accept="image/*" capture="environment" style="font-size:12px;flex:1">
+        <button class="m-btn primary" id="photoBtn">Upload</button>
+      </div>
+      <div id="photoStatus" style="font-size:11px;color:var(--gray);margin-top:4px;display:none"></div>`}
+      <div class="photo-grid" id="photoGrid"></div>
+    </div>
+
+    <div class="modal-section" style="margin-top:14px">
+      <div class="modal-label">Expenses${expensesTotalLabel}</div>
+      <div class="exp-list" id="expList">${expensesHtml}</div>
+      ${readOnly ? '' : `
+      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="number" step="0.01" min="0" id="expAmount" placeholder="Amount $" class="form-input" style="width:110px">
+          <input type="text" id="expVendor" placeholder="Vendor" class="form-input" style="flex:1;min-width:120px">
+          <input type="text" id="expPartNum" placeholder="Part #" class="form-input" style="width:120px">
+        </div>
+        <input type="text" id="expNote" placeholder="Note (optional)" class="form-input" style="width:100%;margin-top:6px">
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <select class="form-select" id="expLaborType" style="flex:1">
+            <option value="">Labor type (optional)</option>
+            <option value="Diagnostic">Diagnostic</option>
+            <option value="Repair">Repair</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Cleaning">Cleaning</option>
+            <option value="Travel">Travel</option>
+          </select>
+          <input type="number" step="0.25" min="0" id="expLaborHours" placeholder="Hrs" class="form-input" style="width:90px">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <input type="file" id="expReceipt" accept="image/*" capture="environment" style="font-size:12px;flex:1">
+          <button class="m-btn primary" id="expBtn" style="white-space:nowrap">Add Expense</button>
+        </div>
+        <div id="expStatus" style="font-size:11px;color:var(--gray);margin-top:4px;display:none"></div>
+      </div>`}
+    </div>
+
+    ${w.notes ? `<div class="modal-section" style="margin-top:14px"><div class="modal-label">Notes</div><div class="modal-notes">${esc(w.notes)}</div></div>` : ''}`;
+
+  if (!readOnly) {
+    document.getElementById('assignBtn').addEventListener('click', () => assignMechanic());
+    document.getElementById('assignShopBtn').addEventListener('click', () => assignShop());
+    document.getElementById('photoBtn').addEventListener('click', () => uploadWOPhoto());
+    document.getElementById('expBtn').addEventListener('click', () => addExpense());
+    document.querySelectorAll('.exp-void').forEach(b => b.addEventListener('click', () => voidExpense(b.dataset.expId)));
+    document.querySelectorAll('.exp-receipt-remove').forEach(b => b.addEventListener('click', async ev => {
+      ev.preventDefault();
+      await removePhoto(b.dataset.receiptId);
+    }));
+  }
+  document.getElementById('updBtn').addEventListener('click', () => addUpdate());
+  const vib = document.getElementById('viewInspBtn');
+  if (vib) vib.addEventListener('click', () => openInspection(vib.dataset.inspId));
+  document.querySelectorAll('.exp-receipt').forEach(a => a.addEventListener('click', async ev => {
     ev.preventDefault();
-    const url = await resolvePhoto(a.dataset.path);
+    const url = await signedUrl(a.dataset.receipt);
     if (url) window.open(url, '_blank', 'noopener');
-    else showToast('Could not open document');
   }));
+  renderPhotos(w.photos || [], 'photoGrid', 'thumb', !readOnly);
+  if (w.previous_wo) {
+    renderPhotos(w.previous_wo.photos || [], 'prevPhotoGrid', 'prevthumb');
+  }
+  if (!readOnly && !w.previous_wo) {
+    setupPrevWoSearch(w.asset_number);
+  }
+
+  const pb = document.getElementById('detailProgressBtn');
+  if (readOnly) { pb.style.display = 'none'; }
+  else if (w.status === 'open')             { pb.textContent = 'Mark In Progress'; pb.style.display = ''; }
+  else if (w.status === 'in_progress') { pb.textContent = 'Mark Completed';   pb.style.display = ''; }
+  else                                 { pb.style.display = 'none'; }
+
+  document.getElementById('detailCancelBtn').style.display = readOnly ? 'none' : '';
+
+  const fub = document.getElementById('detailFollowUpBtn');
+  fub.style.display = readOnly ? '' : 'none';
+  fub.onclick = () => {
+    closeModal('detailModal');
+    openNewWO({
+      previousWoId: w.id,
+      previousDesc: w.description,
+      assetId: w.asset_id || allAssets.find(a => a.asset_number === w.asset_number)?.id,
+      assetNum: w.asset_number,
+      assetDesc: [w.year, w.make, w.model].filter(Boolean).join(' '),
+      shopId: w.shop_id,
+    });
+  };
+
+  // Vehicle status toggle (present only when portal data carries asset_status)
+  const vsb = document.getElementById('vehStatusBtn');
+  if (vsb) vsb.addEventListener('click', () => toggleVehicleStatus());
+
+  // Vehicle History: opens the history tool for this WO's asset in a new tab.
+  const vhb = document.getElementById('detailHistoryBtn');
+  const vhAssetId = w.asset_id || allAssets.find(a => a.asset_number === w.asset_number)?.id;
+  if (vhAssetId) {
+    vhb.style.display = '';
+    vhb.onclick = () => window.open(`rexius-vehicle-history.html?asset=${encodeURIComponent(vhAssetId)}`, '_blank', 'noopener');
+  } else {
+    vhb.style.display = 'none';
+  }
+
+  document.getElementById('detailModal').classList.add('open');
+  rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'view_wo', p_metadata: { wo_id: id, asset: w.asset_number } });
 }
 
-async function resolvePhoto(path) {
-  if (!path) return null;
-  if (/^https?:\/\//i.test(path)) return path; // stored as a full URL
-  return signedUrl(path);
+async function advanceStatus() {
+  if (!selectedWO) return;
+  const nextStatus = selectedWO.status === 'open' ? 'in_progress' : 'completed';
+
+  // CDL vehicles going to completed require DVIR certification
+  if (nextStatus === 'completed' && selectedWO.is_cdl) {
+    // Load defects for this WO to show in the cert modal
+    const defectsRaw = await rpc('get_wo_defects', { p_wo_id: selectedWO.id });
+    const defects = Array.isArray(defectsRaw) ? defectsRaw : [];
+    const defectHtml = defects.length
+      ? `<div style="font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);margin-bottom:6px">Reported Defects</div>` +
+        defects.map(d => `<div style="font-size:13px;padding:6px 10px;border-left:3px solid var(--amber);background:#fff;margin-bottom:4px">${esc(d.description)}</div>`).join('')
+      : `<div style="font-size:12px;color:var(--gray)">No defects on record for this work order.</div>`;
+    document.getElementById('cdlDefectList').innerHTML = defectHtml;
+    document.getElementById('cdlCertBy').value = currentUser || '';
+    document.querySelectorAll('input[name="cdlCert"]').forEach(r => r.checked = false);
+    document.getElementById('cdlCertModal').classList.add('open');
+    return;
+  }
+
+  await rpc('update_work_order_status', { p_wo_id: selectedWO.id, p_status: nextStatus, p_user: currentUser });
+  closeModal('detailModal');
+  showToast(`Work order marked ${nextStatus.replace('_', ' ')}`);
+  rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'status_change', p_metadata: { wo_id: selectedWO.id, status: nextStatus } });
+  loadData();
 }
 
+document.getElementById('cdlCertSubmitBtn').addEventListener('click', async () => {
+  const cert = document.querySelector('input[name="cdlCert"]:checked')?.value;
+  const certBy = document.getElementById('cdlCertBy').value.trim();
+  if (!cert) { showToast('Select a certification type'); return; }
+  if (!certBy) { showToast('Enter mechanic name'); return; }
+  const result = await rpc('certify_work_order', {
+    p_wo_id: selectedWO.id,
+    p_certification: cert,
+    p_certified_by: certBy,
+  });
+  if (result?.success) {
+    closeModal('cdlCertModal');
+    closeModal('detailModal');
+    showToast('Work order certified and completed');
+    rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'cdl_certify', p_metadata: { wo_id: selectedWO.id, cert } });
+    loadData();
+  } else {
+    showToast('Certification failed: ' + JSON.stringify(result));
+  }
+});
+
+async function assignMechanic() {
+  if (!selectedWO) return;
+  const mechId = document.getElementById('assignMech').value;
+  const result = await rpc('assign_work_order', {
+    p_wo_id:       selectedWO.id,
+    p_mechanic_id: mechId || null,
+    p_assigned_by: currentUser,
+  });
+  if (result?.success) {
+    const name = mechId ? (allPeople.find(p => p.id === mechId)?.name || 'mechanic') : 'Unassigned';
+    showToast(mechId ? `Assigned to ${name}` : 'Work order unassigned');
+    rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'assign_wo', p_metadata: { wo_id: selectedWO.id, mechanic_id: mechId || null } });
+    closeModal('detailModal');
+    loadData();
+  } else {
+    showToast('Failed to assign: ' + JSON.stringify(result));
+  }
+}
+
+async function assignShop() {
+  if (!selectedWO) return;
+  const shopId = document.getElementById('assignShop').value;
+  const result = await rpc('assign_work_order_shop', {
+    p_wo_id:       selectedWO.id,
+    p_shop_id:     shopId || null,
+    p_assigned_by: currentUser,
+  });
+  if (result?.success) {
+    const name = shopId ? (allShops.find(s => s.id === shopId)?.name || 'shop') : 'Unassigned';
+    showToast(shopId ? `Shop set to ${name}` : 'Shop cleared');
+    rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'assign_shop', p_metadata: { wo_id: selectedWO.id, shop_id: shopId || null } });
+    const woId = selectedWO.id;
+    await loadData(true);
+    openDetail(woId);
+  } else {
+    showToast('Failed to set shop: ' + JSON.stringify(result));
+  }
+}
+
+async function addUpdate() {
+  if (!selectedWO) return;
+  const text = document.getElementById('updText').value.trim();
+  const type = document.getElementById('updType').value;
+  if (!text) { showToast('Enter an update first'); return; }
+  const woId = selectedWO.id;
+  const result = await rpc('add_work_order_update', {
+    p_wo_id:      woId,
+    p_text:       text,
+    p_created_by: currentUser,
+    p_type:       type,
+  });
+  if (result?.success) {
+    showToast('Update added');
+    rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'add_update', p_metadata: { wo_id: woId, type } });
+    // Refresh data, then reopen this WO so the new update is visible immediately
+    await loadData(true);
+    openDetail(woId);
+  } else {
+    showToast('Failed to add update: ' + JSON.stringify(result));
+  }
+}
+
+// Flip the WO's vehicle between in_service and out_of_service.
+// The RPC also writes a Status-type work order update, so the change shows in the Updates thread.
+async function toggleVehicleStatus() {
+  if (!selectedWO) return;
+  const goingOut = selectedWO.asset_status !== 'out_of_service';
+  if (goingOut && !confirm(`Take ${selectedWO.asset_number} out of service? Drivers will see this at pre-trip inspection.`)) return;
+  const woId = selectedWO.id;
+  const result = await rpc('toggle_asset_service_status', { p_wo_id: woId, p_user: currentUser });
+  if (result?.success) {
+    showToast(result.status === 'out_of_service' ? 'Vehicle taken out of service' : 'Vehicle returned to service');
+    rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'vehicle_status_toggle', p_metadata: { wo_id: woId, asset: selectedWO.asset_number, status: result.status } });
+    // Refresh data, then reopen this WO so the new status + update are visible immediately
+    await loadData(true);
+    openDetail(woId);
+  } else {
+    showToast(result?.error || 'Status change failed');
+  }
+}
+
+// Generate a temporary signed URL for a private-bucket object
 async function signedUrl(path) {
   try {
     const r = await fetch(`${SUPA}/storage/v1/object/sign/${BUCKET}/${path}`, {
@@ -553,166 +1353,406 @@ async function signedUrl(path) {
   } catch(e) { console.error('sign failed', e); return null; }
 }
 
-// ── Search ─────────────────────────────────────────────────────────
-function setMode(m) {
-  searchMode = m;
-  document.getElementById('modeThis').classList.toggle('on', m === 'this');
-  document.getElementById('modeSimilar').classList.toggle('on', m === 'similar');
-  runSearch();
+function renderPhotos(photos, gridId = 'photoGrid', idPrefix = 'thumb', removable = false) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  if (!photos.length) { grid.innerHTML = '<div class="assign-empty">No photos.</div>'; return; }
+  grid.innerHTML = photos.map((p, i) => `<div class="photo-thumb" id="${idPrefix}-${i}" data-photo-id="${p.id || ''}"><div class="photo-loading">…</div></div>`).join('');
+  photos.forEach(async (p, i) => {
+    const url = await signedUrl(p.path);
+    const el = document.getElementById(idPrefix + '-' + i);
+    if (!el) return;
+    const removeBtn = removable && p.id ? `<button class="photo-remove" data-photo-id="${p.id}" title="Remove this photo">×</button>` : '';
+    el.innerHTML = url
+      ? `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="WO photo" loading="lazy"></a>${removeBtn}`
+      : `<div class="photo-loading">⚠</div>${removeBtn}`;
+  });
+  if (removable) {
+    grid.querySelectorAll('.photo-remove').forEach(btn => {
+      btn.addEventListener('click', async ev => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        await removePhoto(btn.dataset.photoId);
+      });
+    });
+  }
 }
 
-async function runSearch() {
-  const q = document.getElementById('searchBox').value.trim();
-  const c = document.getElementById('content');
-  if (!q) { if (history) renderTimeline(); return; }
-  if (!history) return;
-  c.innerHTML = '<div class="empty"><div class="spinner"></div></div>';
+async function removePhoto(photoId) {
+  if (!photoId || !selectedWO) return;
+  if (!confirm('Remove this photo? This cannot be undone in the tool.')) return;
+  const result = await rpc('delete_work_order_photo', { p_photo_id: photoId });
+  if (result?.success) {
+    showToast('Photo removed');
+    rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'remove_photo', p_metadata: { wo_id: selectedWO.id, photo_id: photoId } });
+    const woId = selectedWO.id;
+    await loadData(true);
+    openDetail(woId);
+  } else {
+    showToast('Failed to remove photo: ' + JSON.stringify(result));
+  }
+}
+
+// ── Link to previous work order (same-asset closed WOs) ─────────────
+let prevWoSearchTimer = null;
+function setupPrevWoSearch(assetNumber) {
+  const input = document.getElementById('prevWoSearch');
+  if (!input) return;
+  input.addEventListener('input', () => {
+    clearTimeout(prevWoSearchTimer);
+    const q = input.value.trim().toLowerCase();
+    prevWoSearchTimer = setTimeout(() => runPrevWoSearch(assetNumber, q), 250);
+  });
+  // Show same-asset closed WOs immediately on focus, even before typing
+  input.addEventListener('focus', () => runPrevWoSearch(assetNumber, input.value.trim().toLowerCase()));
+}
+
+async function runPrevWoSearch(assetNumber, q) {
+  const results = document.getElementById('prevWoResults');
+  if (!results) return;
+  results.style.display = 'block';
+  results.innerHTML = '<div class="assign-empty">Searching…</div>';
+
   try {
-    const res = searchMode === 'this'
-      ? await rpc('search_vehicle_history', { p_asset_id: assetId, p_query: q })
-      : await rpc('search_similar_history', { p_asset_id: assetId, p_query: q, p_year_window: 3 });
-    const results = (res && res.results) || [];
-    rpc('log_access', { p_tool_name: 'vehicle-history', p_user_name: currentUser, p_action: 'search', p_metadata: { asset_id: assetId, mode: searchMode, query: q, hits: results.length } });
-    if (!results.length) {
-      c.innerHTML = `<div class="empty"><div class="empty-icon">∅</div><p>No ${searchMode === 'this' ? 'history' : 'similar-vehicle history'} matches "${esc(q)}"</p></div>`;
+    // Closed WOs on this asset: check already-loaded archive first, fall back to a fresh fetch
+    let candidates = archivedWOs.length ? archivedWOs : (await rpc('get_archived_work_orders', {})).work_orders || [];
+    // Also include any completed WOs still visible on the active board (within the 10.5-day window)
+    candidates = candidates.concat(allWOs.filter(w => w.status === 'completed'));
+
+    let matches = candidates.filter(w => w.asset_number === assetNumber && w.id !== selectedWO?.id);
+    if (q) matches = matches.filter(w => (w.description || '').toLowerCase().includes(q));
+    matches = matches.slice(0, 8);
+
+    if (!matches.length) {
+      results.innerHTML = '<div class="assign-empty">No closed work orders found for this asset.</div>';
       return;
     }
-    if (searchMode === 'this') renderSelfResults(results, q, c);
-    else renderSimilarResults(results, q, c);
+    results.innerHTML = matches.map(w => `
+      <div class="assign-row" data-link-wo="${w.id}" style="cursor:pointer">
+        <span class="assign-mech">${esc(w.description) || '—'}</span>
+        <span class="assign-at">${fmtDate(w.date_completed)}</span>
+      </div>`).join('');
+    results.querySelectorAll('[data-link-wo]').forEach(el => {
+      el.addEventListener('click', () => linkPreviousWO(el.dataset.linkWo));
+    });
   } catch(e) {
     console.error(e);
-    c.innerHTML = '<div class="empty"><div class="empty-icon">⚠</div><p>Search failed</p></div>';
+    results.innerHTML = '<div class="assign-empty">Search failed.</div>';
   }
 }
 
-const TYPE_LABEL = { work_order: 'Work Order', defect: 'Defect', service_record: 'Service', historical_defect: 'Historical Defect' };
-const TYPE_CLASS = { work_order: 'wo', defect: 'defect', service_record: 'service', historical_defect: 'historical' };
-
-function renderSelfResults(results, q, c) {
-  c.innerHTML = `<div class="sr-note">${results.length} match${results.length === 1 ? '' : 'es'} on this vehicle for "${esc(q)}" — click a result for full detail</div>` +
-    results.map((r, i) => `
-      <div class="sr-card t-${TYPE_CLASS[r.type] || 'historical'}" data-idx="${i}">
-        <div class="tl-head"><span class="tl-type tt-${TYPE_CLASS[r.type] || 'historical'}">${TYPE_LABEL[r.type] || r.type}</span>
-          ${r.status ? `<span class="st st-${esc(r.status)}">${esc(String(r.status).replace('_', ' '))}</span>` : ''}
-          ${r.extra ? `<span class="tl-tag tag-meter">${esc(r.extra)}</span>` : ''}
-          <span class="tl-date">${fmtDate(r.date)}</span></div>
-        <div class="sr-snippet">${hl(r.snippet)}</div>
-        <div class="sr-detail" id="srd-${i}"></div>
-      </div>`).join('');
-  c.querySelectorAll('.sr-card').forEach(card => card.addEventListener('click', () => {
-    const i = card.dataset.idx;
-    const r = results[i];
-    const det = document.getElementById('srd-' + i);
-    if (card.classList.contains('expanded')) { card.classList.remove('expanded'); return; }
-    det.innerHTML = fullRecordHtml(r);
-    card.classList.add('expanded');
-    hydratePhotos(det);
-  }));
-}
-
-// Pull the full record out of the already-loaded history payload
-function fullRecordHtml(r) {
-  const pools = { work_order: ['work_orders', 'wo'], defect: ['defects', 'defect'], service_record: ['service_records', 'service'], historical_defect: ['historical_defects', 'historical'] };
-  const p = pools[r.type];
-  if (!p) return '';
-  const rec = (history[p[0]] || []).find(x => x.id === r.id);
-  if (!rec) return '<div class="tl-notes">Full record not in loaded history.</div>';
-  return renderEvent({ type: p[1], d: rec });
-}
-
-function renderSimilarResults(results, q, c) {
-  const TIER_LABEL = { 0: 'Same model · similar vintage', 1: 'Same make · similar vintage', 2: 'Same group' };
-  c.innerHTML = `<div class="sr-note">${results.length} match${results.length === 1 ? '' : 'es'} across similar vehicles for "${esc(q)}"</div>` +
-    results.map(r => `
-      <div class="sr-card t-${TYPE_CLASS[r.type] || 'historical'}" data-open-asset="${esc(r.asset_id)}">
-        <div class="tl-head">
-          <span class="sr-asset">${esc(r.asset_number)}</span>
-          <span class="tl-tag tag-meter">${esc([r.year, r.make, r.model].filter(Boolean).join(' '))}</span>
-          <span class="tier tier-${r.tier}">${TIER_LABEL[r.tier] || ''}</span>
-          <span class="tl-type tt-${TYPE_CLASS[r.type] || 'historical'}">${TYPE_LABEL[r.type] || r.type}</span>
-          <span class="tl-date">${fmtDate(r.date)}</span>
-        </div>
-        <div class="sr-snippet">${hl(r.snippet)}</div>
-        <div class="tl-meta"><span class="sr-open">open this vehicle's history →</span></div>
-      </div>`).join('');
-  c.querySelectorAll('[data-open-asset]').forEach(card => card.addEventListener('click', () => {
-    const id = card.dataset.openAsset;
-    const url = `${location.pathname}?asset=${encodeURIComponent(id)}&q=${encodeURIComponent(q)}`;
-    window.open(url, '_blank', 'noopener');
-  }));
-}
-
-// ── Asset picker (no ?asset= param) ────────────────────────────────
-async function showPicker() {
-  document.getElementById('assetHead').style.display = 'none';
-  document.getElementById('toolbarEl').style.display = 'none';
-  const c = document.getElementById('content');
-  c.innerHTML = '<div class="empty"><div class="spinner"></div></div>';
-  if (!allAssets.length) {
-    try {
-      const r = await fetch(`${SUPA}/rest/v1/assets?select=id,asset_number,make,model,year,asset_subtype&deleted_at=is.null&order=asset_number`, { headers: H });
-      allAssets = await r.json();
-      if (!Array.isArray(allAssets)) allAssets = [];
-    } catch(e) { console.error(e); }
-  }
-  c.innerHTML = `
-    <div class="picker-wrap">
-      <div class="picker-title">Select a Vehicle</div>
-      <input class="tb-search" id="pickerSearch" style="width:100%" placeholder="Search asset number, make, model, year..." autocomplete="off">
-      <div class="picker-list" id="pickerList"></div>
-    </div>`;
-  const input = document.getElementById('pickerSearch');
-  input.addEventListener('input', () => renderPicker(input.value));
-  input.focus();
-  renderPicker('');
-}
-
-// Scored search: exact number → prefix → substring → make/model/year
-function renderPicker(query) {
-  const list = document.getElementById('pickerList');
-  const q = (query || '').trim().toLowerCase();
-  let matches;
-  if (!q) {
-    matches = allAssets.slice(0, 30);
+async function linkPreviousWO(previousWoId) {
+  if (!selectedWO) return;
+  const woId = selectedWO.id;
+  const result = await rpc('link_previous_work_order', { p_wo_id: woId, p_previous_wo_id: previousWoId });
+  if (result?.success) {
+    showToast('Linked to previous work order');
+    rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'link_previous_wo', p_metadata: { wo_id: woId, previous_wo_id: previousWoId } });
+    await loadData(true);
+    openDetail(woId);
   } else {
-    const scored = [];
-    for (const a of allAssets) {
-      const num = String(a.asset_number || '').toLowerCase();
-      const desc = [a.make, a.model, a.year, a.asset_subtype].filter(Boolean).join(' ').toLowerCase();
-      let tier = null;
-      if (num === q) tier = 0;
-      else if (num.startsWith(q)) tier = 1;
-      else if (num.includes(q)) tier = 2;
-      else if (desc.includes(q)) tier = 3;
-      if (tier !== null) scored.push({ a, tier });
-    }
-    scored.sort((x, y) => x.tier - y.tier || String(x.a.asset_number).localeCompare(String(y.a.asset_number), undefined, { numeric: true }));
-    matches = scored.slice(0, 30).map(s => s.a);
+    showToast('Failed to link: ' + JSON.stringify(result));
   }
-  if (!matches.length) { list.innerHTML = '<div class="empty" style="padding:16px"><p>No matching assets.</p></div>'; return; }
-  list.innerHTML = matches.map(a => `
-    <div class="picker-row" data-asset-id="${esc(a.id)}">
-      <span class="picker-num">${esc(a.asset_number)}</span>
-      <span class="picker-desc">${esc([a.year, a.make, a.model].filter(Boolean).join(' ')) || '—'}</span>
-    </div>`).join('');
-  list.querySelectorAll('.picker-row').forEach(row => row.addEventListener('click', () => {
-    assetId = row.dataset.assetId;
-    const u = new URL(location.href);
-    u.searchParams.set('asset', assetId);
-    u.searchParams.delete('q');
-    window.history.replaceState({}, '', u.toString());
-    document.getElementById('searchBox').value = '';
-    loadHistory();
-  }));
 }
 
-// ── Utils ──────────────────────────────────────────────────────────
-function showSpinner() { document.getElementById('content').innerHTML = '<div class="empty"><div class="spinner"></div></div>'; }
+async function uploadWOPhoto() {
+  if (!selectedWO) return;
+  const input = document.getElementById('photoFile');
+  const file = input.files && input.files[0];
+  if (!file) { showToast('Choose a photo first'); return; }
+  const woId = selectedWO.id;
+  const status = document.getElementById('photoStatus');
+  status.style.display = 'block';
+  status.textContent = 'Uploading...';
+  try {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${woId}/${Date.now()}_wo_${Math.random().toString(36).slice(2)}.${ext}`;
+    const upRes = await fetch(`${SUPA}/storage/v1/object/${BUCKET}/${path}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${KEY}`, apikey: KEY, 'Content-Type': file.type },
+      body: file,
+    });
+    if (!upRes.ok) { status.textContent = 'Upload failed.'; return; }
+    const result = await rpc('add_work_order_photo', { p_wo_id: woId, p_path: path });
+    if (result?.success) {
+      showToast('Photo added');
+      rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'add_photo', p_metadata: { wo_id: woId } });
+      await loadData(true);
+      openDetail(woId);
+    } else {
+      status.textContent = 'Saved file but failed to record: ' + JSON.stringify(result);
+    }
+  } catch(e) {
+    console.error(e);
+    status.textContent = 'Upload error.';
+  }
+}
+
+async function addExpense() {
+  if (!selectedWO) return;
+  const woId = selectedWO.id;
+  const amountRaw = document.getElementById('expAmount').value;
+  const amount = amountRaw ? parseFloat(amountRaw) : null;
+  if (amountRaw && (isNaN(amount) || amount <= 0)) { showToast('Enter a valid amount'); return; }
+  const vendor  = document.getElementById('expVendor').value.trim() || null;
+  const partNum = document.getElementById('expPartNum').value.trim() || null;
+  const note    = document.getElementById('expNote').value.trim() || null;
+  const laborType  = document.getElementById('expLaborType').value || null;
+  const laborHoursRaw = document.getElementById('expLaborHours').value;
+  const laborHours = laborHoursRaw ? parseFloat(laborHoursRaw) : null;
+  if (laborHoursRaw && (isNaN(laborHours) || laborHours <= 0)) { showToast('Enter valid labor hours'); return; }
+  const receiptFile = document.getElementById('expReceipt').files?.[0] || null;
+
+  if (amount == null && laborHours == null) { showToast('Enter an amount or labor hours'); return; }
+
+  const status = document.getElementById('expStatus');
+  status.style.display = 'block';
+  status.textContent = 'Saving expense...';
+
+  try {
+    const expenseId = await rpc('add_work_order_expense', {
+      p_wo_id: woId, p_amount: amount, p_vendor: vendor,
+      p_part_number: partNum, p_note: note, p_created_by: currentUser,
+      p_labor_type: laborType, p_labor_hours: laborHours,
+    });
+    if (!expenseId) { status.textContent = 'Failed to save expense.'; return; }
+
+    // Optional receipt upload, linked to the expense
+    if (receiptFile) {
+      status.textContent = 'Uploading receipt...';
+      const ext = (receiptFile.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${woId}/${Date.now()}_receipt_${Math.random().toString(36).slice(2)}.${ext}`;
+      const upRes = await fetch(`${SUPA}/storage/v1/object/${BUCKET}/${path}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${KEY}`, apikey: KEY, 'Content-Type': receiptFile.type },
+        body: receiptFile,
+      });
+      if (upRes.ok) {
+        await rpc('add_expense_receipt', { p_expense_id: expenseId, p_path: path });
+      } else {
+        showToast('Expense saved, but receipt upload failed');
+      }
+    }
+
+    showToast('Expense added');
+    rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'add_expense', p_metadata: { wo_id: woId, amount } });
+    await loadData(true);
+    openDetail(woId);
+  } catch(e) {
+    console.error(e);
+    status.textContent = 'Error saving expense.';
+  }
+}
+
+async function voidExpense(expenseId) {
+  if (!selectedWO || !expenseId) return;
+  if (!confirm('Void this expense? It will be removed from the total.')) return;
+  const woId = selectedWO.id;
+  const result = await rpc('void_work_order_expense', { p_expense_id: expenseId });
+  if (result === true || result?.success) {
+    showToast('Expense voided');
+    rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'void_expense', p_metadata: { wo_id: woId, expense_id: expenseId } });
+    await loadData(true);
+    openDetail(woId);
+  } else {
+    showToast('Failed to void expense');
+  }
+}
+
+async function openInspection(inspId) {
+  if (!inspId) return;
+  const body = document.getElementById('inspBody');
+  body.innerHTML = '<div class="assign-empty">Loading inspection…</div>';
+  document.getElementById('inspModal').classList.add('open');
+
+  let insp;
+  try {
+    insp = await rpc('get_inspection_detail', { p_inspection_id: inspId });
+  } catch(e) { body.innerHTML = '<div class="assign-empty">Failed to load inspection.</div>'; return; }
+  if (!insp) { body.innerHTML = '<div class="assign-empty">Inspection not found.</div>'; return; }
+
+  document.getElementById('inspTitle').textContent = insp.form_name || 'Inspection';
+  document.getElementById('inspAsset').textContent =
+    [insp.asset_number, insp.asset_year, insp.asset_make, insp.asset_model].filter(Boolean).join(' · ');
+
+  const items = insp.items || [];
+  const itemsHtml = items.map(it => {
+    const pf = (it.pass_fail_value || '').toLowerCase();
+    const badge = pf === 'pass' ? '<span class="insp-pf insp-pass">PASS</span>'
+                : pf === 'fail' ? '<span class="insp-pf insp-fail">FAIL</span>'
+                : (it.text_value != null ? `<span class="insp-val">${esc(it.text_value)}</span>`
+                  : it.number_value != null ? `<span class="insp-val">${esc(String(it.number_value))}</span>`
+                  : '<span class="insp-pf insp-na">—</span>');
+    const photoCount = (it.photos || []).length;
+    return `<div class="insp-item">
+      <div class="insp-item-head">
+        <span class="insp-item-title">${esc(it.title) || 'Item'}</span>
+        ${badge}
+      </div>
+      ${it.notes ? `<div class="insp-item-notes">${esc(it.notes)}</div>` : ''}
+      ${photoCount ? `<div class="insp-photos" data-photos='${esc(JSON.stringify(it.photos.map(p=>p.path)))}'></div>` : ''}
+    </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="modal-grid">
+      <div class="modal-section"><div class="modal-label">Inspector</div><div class="modal-value">${esc(insp.inspector) || '—'}</div></div>
+      <div class="modal-section"><div class="modal-label">Date</div><div class="modal-value">${fmtDateTime(insp.date_inspected)}</div></div>
+      <div class="modal-section"><div class="modal-label">Result</div><div class="modal-value"><span class="st st-${insp.status === 'failed' ? 'open' : 'completed'}">${esc(insp.status) || '—'}</span></div></div>
+      <div class="modal-section"><div class="modal-label">Supervisor</div><div class="modal-value">${esc(insp.supervisor_name_raw) || '—'}</div></div>
+    </div>
+    <div class="modal-section" style="margin-top:14px">
+      <div class="modal-label">Checklist (${items.length} items)</div>
+      <div class="insp-list">${itemsHtml || '<div class="assign-empty">No line items.</div>'}</div>
+    </div>`;
+
+  // Render any line-item photos as signed-URL thumbnails
+  document.querySelectorAll('.insp-photos').forEach(async el => {
+    let paths = [];
+    try { paths = JSON.parse(el.dataset.photos); } catch(e) {}
+    el.innerHTML = paths.map((_, i) => `<div class="photo-thumb" id="insp-thumb-${Math.random().toString(36).slice(2)}-${i}"><div class="photo-loading">…</div></div>`).join('');
+    const thumbs = el.querySelectorAll('.photo-thumb');
+    paths.forEach(async (path, i) => {
+      const url = await signedUrl(path);
+      const tEl = thumbs[i];
+      if (!tEl) return;
+      tEl.innerHTML = url
+        ? `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="inspection photo" loading="lazy"></a>`
+        : '<div class="photo-loading">⚠</div>';
+    });
+  });
+}
+
+async function cancelWO() {
+  if (!selectedWO || !confirm('Cancel this work order?')) return;
+  await rpc('update_work_order_status', { p_wo_id: selectedWO.id, p_status: 'cancelled', p_user: currentUser });
+  closeModal('detailModal');
+  showToast('Work order cancelled');
+  loadData();
+}
+
+// ── New WO ─────────────────────────────────────────────────────────
+function openNewWO(prefill) {
+  document.getElementById('woAssetSearch').value = '';
+  document.getElementById('woAssetId').value = '';
+  document.getElementById('woDesc').value = '';
+  document.getElementById('woNotes').value = '';
+  document.getElementById('woCost').value = '';
+  document.getElementById('woPriority').value = 'normal';
+  document.getElementById('woMechanic').value = '';
+  document.getElementById('woShop').value = '';
+  document.getElementById('woDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('woError').style.display = 'none';
+
+  previousWoIdForNew = null;
+  const banner = document.getElementById('woFollowUpBanner');
+  if (prefill) {
+    previousWoIdForNew = prefill.previousWoId || null;
+    if (prefill.assetId)  { document.getElementById('woAssetId').value = prefill.assetId; }
+    if (prefill.assetNum) { document.getElementById('woAssetSearch').value = prefill.assetNum + (prefill.assetDesc ? ' — ' + prefill.assetDesc : ''); }
+    if (prefill.shopId)   { document.getElementById('woShop').value = prefill.shopId; }
+    if (banner) {
+      banner.style.display = previousWoIdForNew ? 'block' : 'none';
+      banner.textContent = previousWoIdForNew ? `Follow-up to: ${prefill.previousDesc || 'previous work order'}` : '';
+    }
+  } else if (banner) {
+    banner.style.display = 'none';
+  }
+
+  document.getElementById('newWOModal').classList.add('open');
+}
+
+function searchAssets(q) {
+  const drop = document.getElementById('assetDropdown');
+  if (!q.trim()) { drop.style.display = 'none'; return; }
+  const qn = q.toLowerCase().replace(/[\s\-_]/g, '');
+  // Tiered scoring: asset number matches always outrank vehicle-detail matches.
+  // Tier 0 = exact number, 1 = number prefix, 2 = number substring, 3 = make/model/year.
+  const scored = [];
+  allAssets.forEach(a => {
+    const an   = (a.asset_number||'').toLowerCase().replace(/[\s\-_]/g, '');
+    const desc = [a.make, a.model, a.year].filter(Boolean).join(' ').toLowerCase();
+    let tier;
+    if (an === qn) tier = 0;
+    else if (an.startsWith(qn)) tier = 1;
+    else if (an.includes(qn)) tier = 2;
+    else if (desc.includes(q.toLowerCase())) tier = 3;
+    else return;
+    scored.push([tier, a]);
+  });
+  scored.sort((x, y) => x[0] - y[0]
+    || x[1].asset_number.localeCompare(y[1].asset_number, undefined, { numeric: true }));
+  const matches = scored.map(s => s[1]).slice(0, 8);
+  if (!matches.length) { drop.style.display = 'none'; return; }
+  drop.innerHTML = matches.map(a => {
+    const desc = [a.year, a.make, a.model].filter(Boolean).join(' ');
+    return `<div class="asset-opt"
+      data-asset-id="${esc(a.id)}"
+      data-asset-num="${esc(a.asset_number)}"
+      data-asset-desc="${esc(desc)}"
+      style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--surface);font-size:13px">
+      <span style="font-family:var(--mono);font-weight:600">${esc(a.asset_number)}</span>
+      <span style="font-size:11px;color:var(--gray);margin-left:8px">${esc(desc)}</span>
+    </div>`;
+  }).join('');
+  drop.style.display = 'block';
+}
+
+function selectAsset(id, num, desc) {
+  document.getElementById('woAssetId').value = id;
+  document.getElementById('woAssetSearch').value = num + (desc ? ' — ' + desc : '');
+  document.getElementById('assetDropdown').style.display = 'none';
+}
+
+async function saveNewWO() {
+  const assetId = document.getElementById('woAssetId').value;
+  const desc    = document.getElementById('woDesc').value.trim();
+  const errEl   = document.getElementById('woError');
+  if (!assetId || !desc) {
+    errEl.textContent = 'Asset and description are required.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const cost   = document.getElementById('woCost').value;
+  const mechId = document.getElementById('woMechanic').value;
+  const shopId = document.getElementById('woShop').value;
+  const result = await rpc('create_work_order', {
+    p_asset_id:    assetId,
+    p_description: desc,
+    p_priority:    document.getElementById('woPriority').value,
+    p_mechanic_id: mechId || null,
+    p_date_opened: document.getElementById('woDate').value,
+    p_notes:       document.getElementById('woNotes').value || null,
+    p_parts_cost:  cost ? parseFloat(cost) : null,
+    p_created_by:  currentUser,
+    p_shop_id:     shopId || null,
+    p_previous_wo_id: previousWoIdForNew || null,
+  });
+  if (result?.success) {
+    closeModal('newWOModal');
+    showToast(previousWoIdForNew ? 'Follow-up work order created' : 'Work order created');
+    rpc('log_access', { p_tool_name: 'work-orders', p_user_name: currentUser, p_action: 'create_wo', p_metadata: { asset_id: assetId, previous_wo_id: previousWoIdForNew } });
+    previousWoIdForNew = null;
+    loadData();
+  } else {
+    errEl.textContent = 'Failed to create work order: ' + JSON.stringify(result);
+    errEl.style.display = 'block';
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  render();
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function fmtDate(d) {
   if (!d) return '—';
-  const s = String(d).slice(0, 10);
-  return new Date(s + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function fmtDateTime(d) {
@@ -725,16 +1765,23 @@ function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
 
-// Escape a ts_headline snippet, then restore only its <b> highlight tags.
-function hl(s) {
-  return esc(s).replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
+function fmtPhone(p) {
+  if (!p) return '—';
+  const d = String(p).replace(/\D/g, '');
+  if (d.length === 10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+  if (d.length === 11 && d[0] === '1') return `(${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
+  return esc(String(p)); // show as-is if not a clean 10-digit (e.g. legacy junk)
 }
 
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function showSpinner() {
+  document.getElementById('content').innerHTML = '<div class="empty"><div class="spinner"></div></div>';
 }
 </script>
 </body>
